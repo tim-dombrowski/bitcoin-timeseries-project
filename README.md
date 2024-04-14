@@ -6,6 +6,14 @@ This project focuses on analyzing the price history of bitcoin (BTC) across vari
 
 In addition to exploring the concept of autocorrelation and time series stationarity, this project also examines the time series decomposition of the price series and explores some R packages focused on time series analysis. These include the [quantmod package](https://cran.r-project.org/package=quantmod), [xts package](https://cran.r-project.org/package=xts), [tseries package](https://cran.r-project.org/package=tseries), and [seasonal package](https://cran.r-project.org/package=seasonal). With seasonality, there are a few variations to consider. First is day-of-week seasonality, which models any recurring weekly trends. Some other approaches to modeling the seasonality are day-of-year and month-of-year seasonality. Lastly, we'll explore another aspect of seasonality around the four-year halving cycle for Bitcoin. Given that we have only seen a few full halving cycles since bitcoin price data can be reliably measured, these results are still in their infancy in regard to any statistical conclusions.
 
+### Other Bitcoin-Related Projects
+
+For some other R Notebook project demos related to bitcoin, you can check out the following repositories:
+
+* [bitcoin-factoranalysis-project](https://github.com/tim-dombrowski/bitcoin-factoranalysis-project) - This project focuses on applying traditional asset pricing models to bitcoin (e.g. CAPM, Fama-French, etc) and exploring some other potential factors related to the Bitcoin blockchain, such as hashrate or trading volume.
+
+* [bitcoin-miningstock-project]() - This project explores the relationship between the stock prices of publicly traded bitcoin mining companies and the price of bitcoin, as well as other mining-related metrics.
+
 ### Repository Structure
 
 The data work for this project demo is contained in the R Notebook directory of this repository. On GitHub, the webpage within that folder should display the README.md file, which contains the compiled output of the R Notebook. If you wish to explore the source code locally, then you can open the (btc.Rmd)[https://github.com/tim-dombrowski/bitcoin-timeseries-project/blob/main/R%20Notebook/btc.Rmd] file in RStudio and execute the code chunks to replicate the data work. Note the `output: html_notebook` line in the header of that file, which indicates that the R Markdown document is an R Notebook. 

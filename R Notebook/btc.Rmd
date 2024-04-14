@@ -69,7 +69,7 @@ library(stringr)
 
 ## Bitcoin Data Import and Cleaning
 
-The `getSymbols()` function from the quantmod package let's use import the daily price data for bitcoin. The `src="yahoo"` argument specifies that we want to pull the data from Yahoo Finance. The `from` and `to` arguments specify the date range for the data, which goes back to October 2014 for bitcoin. Rather that assigning a variable name to the output of `getSymbols()`, the function creates a new variable for each ticker in the list, named after the ticker. For bitcoin in particular, the `"BTC-USD"` can be tedious to work with since the presence of a dash requires one to wrap the variable name in backticks. This is resolved in the last line of the code chunk below by creating a new variable `BTC` to be used instead.
+The `getSymbols()` function from the quantmod package let's us import the daily price data for bitcoin. The `src="yahoo"` argument specifies that we want to pull the data from Yahoo Finance. The `from` and `to` arguments specify the date range for the data, which goes back to October 2014 for bitcoin. Rather that assigning a variable name to the output of `getSymbols()`, the function creates a new variable for each ticker in the list, named after the ticker. For bitcoin in particular, the `"BTC-USD"` can be tedious to work with since the presence of a dash requires one to wrap the variable name in backticks. This is resolved in the last line of the code chunk below by creating a new variable `BTC` to be used instead.
 
 ```{r assetdata, results='hide'}
 startdate = "2014-10-01"
@@ -81,7 +81,7 @@ getSymbols(tickers,
 BTC = `BTC-USD`
 ```
 
-Now that we have the daily bitcoin price series, let's extract the close prices into a univariate xts object. Then we can rename the column to `"Close"` to keep variable names simple. After that, let's aggregate the daily prices to weekly and monthly series to compare the time series properties at different frequencies. The xts package (which is a dependence of quantmod) allows us to easily convert the daily price data into weekly or monthly OHLC series using `to.weekly()` and `to.monthly()`. The `name=NULL` option in those functions prevents the variable names from including the name of the original object. So instead of `BTCweeksOHLC2$``BTCdaily$Close.Close`` `, we can just use `BTCweeksOHLC$Close`. 
+Now that we have the daily bitcoin price series, let's extract the close prices into a univariate xts object. Then we can rename the column to `"Close"` to keep variable names simple. After that, let's aggregate the daily prices to weekly and monthly series to compare the time series properties at different frequencies. The xts package (which is a dependency of quantmod) allows us to easily convert the daily price data into weekly or monthly OHLC series using `to.weekly()` and `to.monthly()`. The `name=NULL` option in those functions prevents the variable names from including the name of the original object. So instead of `BTCweeksOHLC2$``BTCdaily$Close.Close`` `, we can just use `BTCweeksOHLC$Close`. 
 
 ```{r btcfreq}
 # Create daily series and rename column

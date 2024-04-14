@@ -122,7 +122,7 @@ library(stringr)
 
 ## Bitcoin Data Import and Cleaning
 
-The `getSymbols()` function from the quantmod package let’s use import
+The `getSymbols()` function from the quantmod package let’s us import
 the daily price data for bitcoin. The `src="yahoo"` argument specifies
 that we want to pull the data from Yahoo Finance. The `from` and `to`
 arguments specify the date range for the data, which goes back to
@@ -149,7 +149,7 @@ prices into a univariate xts object. Then we can rename the column to
 `"Close"` to keep variable names simple. After that, let’s aggregate the
 daily prices to weekly and monthly series to compare the time series
 properties at different frequencies. The xts package (which is a
-dependence of quantmod) allows us to easily convert the daily price data
+dependency of quantmod) allows us to easily convert the daily price data
 into weekly or monthly OHLC series using `to.weekly()` and
 `to.monthly()`. The `name=NULL` option in those functions prevents the
 variable names from including the name of the original object. So
@@ -395,7 +395,7 @@ meanAnnRets |> round(digits=2)
 ```
 
     ##   BTCdaily BTCweeks BTCmonth
-    ## 1     53.6    55.39    55.16
+    ## 1    53.54    55.33     55.1
 
 However, from the volatilities (as measured by standard deviation of the
 return series), we can see that the higher frequencies produce larger
@@ -409,7 +409,7 @@ meanRetVols |> round(digits=2)
 ```
 
     ##   BTCdaily BTCweeks BTCmonth
-    ## 1  1353.75   513.48   247.25
+    ## 1  1353.75   513.53    247.3
 
 One way to visualize the empirical distribution summarized by the mean
 and standard deviation is to plot a frequency histogram of the return
@@ -608,7 +608,7 @@ adf.test(as.numeric(BTCdaily))
     ##  Augmented Dickey-Fuller Test
     ## 
     ## data:  as.numeric(BTCdaily)
-    ## Dickey-Fuller = -2.0014, Lag order = 15, p-value = 0.5777
+    ## Dickey-Fuller = -2.0209, Lag order = 15, p-value = 0.5695
     ## alternative hypothesis: stationary
 
 ``` r
@@ -621,7 +621,7 @@ adf.test(rBTCdaily$AnnRet)
     ##  Augmented Dickey-Fuller Test
     ## 
     ## data:  rBTCdaily$AnnRet
-    ## Dickey-Fuller = -14.14, Lag order = 15, p-value = 0.01
+    ## Dickey-Fuller = -14.137, Lag order = 15, p-value = 0.01
     ## alternative hypothesis: stationary
 
 ``` r
@@ -632,7 +632,7 @@ adf.test(as.numeric(BTCweeks))
     ##  Augmented Dickey-Fuller Test
     ## 
     ## data:  as.numeric(BTCweeks)
-    ## Dickey-Fuller = -2.5944, Lag order = 7, p-value = 0.3267
+    ## Dickey-Fuller = -2.607, Lag order = 7, p-value = 0.3214
     ## alternative hypothesis: stationary
 
 ``` r
@@ -645,7 +645,7 @@ adf.test(rBTCweeks$AnnRet)
     ##  Augmented Dickey-Fuller Test
     ## 
     ## data:  rBTCweeks$AnnRet
-    ## Dickey-Fuller = -7.2023, Lag order = 7, p-value = 0.01
+    ## Dickey-Fuller = -7.2039, Lag order = 7, p-value = 0.01
     ## alternative hypothesis: stationary
 
 ``` r
@@ -656,7 +656,7 @@ adf.test(as.numeric(BTCmonth))
     ##  Augmented Dickey-Fuller Test
     ## 
     ## data:  as.numeric(BTCmonth)
-    ## Dickey-Fuller = -2.625, Lag order = 4, p-value = 0.3172
+    ## Dickey-Fuller = -2.6323, Lag order = 4, p-value = 0.3141
     ## alternative hypothesis: stationary
 
 ``` r
@@ -669,7 +669,7 @@ adf.test(rBTCmonth$AnnRet)
     ##  Augmented Dickey-Fuller Test
     ## 
     ## data:  rBTCmonth$AnnRet
-    ## Dickey-Fuller = -4.3499, Lag order = 4, p-value = 0.01
+    ## Dickey-Fuller = -4.352, Lag order = 4, p-value = 0.01
     ## alternative hypothesis: stationary
 
 If you want to dig deeper into the theory and underlying assumptions
@@ -725,9 +725,9 @@ summary(weekreg)
     ## Coefficients:
     ##                 Estimate Std. Error t value Pr(>|t|)  
     ## (Intercept)       -5.889     60.667  -0.097   0.9227  
-    ## as.factor(day)1   67.755     85.795   0.790   0.4297  
-    ## as.factor(day)2   61.120     85.795   0.712   0.4763  
-    ## as.factor(day)3   26.371     85.795   0.307   0.7586  
+    ## as.factor(day)1   67.755     85.796   0.790   0.4297  
+    ## as.factor(day)2   61.120     85.796   0.712   0.4763  
+    ## as.factor(day)3   25.948     85.796   0.302   0.7623  
     ## as.factor(day)4  174.952     85.839   2.038   0.0416 *
     ## as.factor(day)5   11.785     85.839   0.137   0.8908  
     ## as.factor(day)6   74.578     85.839   0.869   0.3850  
@@ -735,8 +735,8 @@ summary(weekreg)
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
     ## Residual standard error: 1354 on 3476 degrees of freedom
-    ## Multiple R-squared:  0.001601,   Adjusted R-squared:  -0.0001227 
-    ## F-statistic: 0.9288 on 6 and 3476 DF,  p-value: 0.4729
+    ## Multiple R-squared:  0.001603,   Adjusted R-squared:  -0.0001205 
+    ## F-statistic: 0.9301 on 6 and 3476 DF,  p-value: 0.472
 
 In addition to testing for seasonality, we can also include the count
 variable as a linear time trend to see if returns are systematically
@@ -754,24 +754,24 @@ summary(weekreg2)
     ## 
     ## Residuals:
     ##      Min       1Q   Median       3Q      Max 
-    ## -16955.4   -508.4      0.7    565.2   8219.6 
+    ## -16955.4   -508.2      0.9    565.3   8219.6 
     ## 
     ## Coefficients:
     ##                   Estimate Std. Error t value Pr(>|t|)  
-    ## (Intercept)       3.472663  72.517121   0.048   0.9618  
-    ## count            -0.005379   0.022818  -0.236   0.8137  
-    ## as.factor(day)1  67.760223  85.807108   0.790   0.4298  
-    ## as.factor(day)2  61.130519  85.807117   0.712   0.4763  
-    ## as.factor(day)3  26.387461  85.807133   0.308   0.7585  
-    ## as.factor(day)4 174.955002  85.850258   2.038   0.0416 *
-    ## as.factor(day)5  11.792884  85.850264   0.137   0.8907  
-    ## as.factor(day)6  74.591262  85.850276   0.869   0.3850  
+    ## (Intercept)       3.653881  72.517384   0.050   0.9598  
+    ## count            -0.005483   0.022818  -0.240   0.8101  
+    ## as.factor(day)1  67.760327  85.807419   0.790   0.4298  
+    ## as.factor(day)2  61.130727  85.807428   0.712   0.4763  
+    ## as.factor(day)3  25.964567  85.807443   0.303   0.7622  
+    ## as.factor(day)4 174.955054  85.850568   2.038   0.0416 *
+    ## as.factor(day)5  11.793040  85.850574   0.137   0.8907  
+    ## as.factor(day)6  74.591522  85.850586   0.869   0.3850  
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
     ## Residual standard error: 1354 on 3475 degrees of freedom
-    ## Multiple R-squared:  0.001617,   Adjusted R-squared:  -0.0003945 
-    ## F-statistic: 0.8038 on 7 and 3475 DF,  p-value: 0.584
+    ## Multiple R-squared:  0.001619,   Adjusted R-squared:  -0.0003917 
+    ## F-statistic: 0.8052 on 7 and 3475 DF,  p-value: 0.5828
 
 The models above show the decomposition of an observed time series into
 (1) a trend component, (2) a seasonal component, (3) and a random
@@ -837,28 +837,28 @@ summary(monthreg)
     ## 
     ## Residuals:
     ##     Min      1Q  Median      3Q     Max 
-    ## -585.85 -141.25  -10.41  145.61  599.19 
+    ## -585.85 -141.25  -10.06  145.61  599.19 
     ## 
     ## Coefficients:
     ##                    Estimate Std. Error t value Pr(>|t|)  
-    ## (Intercept)        -47.0790    81.8233  -0.575   0.5663  
-    ## as.factor(month)1  282.6782   115.7156   2.443   0.0163 *
-    ## as.factor(month)2   89.6428   112.7856   0.795   0.4286  
-    ## as.factor(month)3  129.2708   112.7856   1.146   0.2544  
-    ## as.factor(month)4    0.6077   112.7856   0.005   0.9957  
-    ## as.factor(month)5  209.5082   112.7856   1.858   0.0661 .
-    ## as.factor(month)6   31.2896   112.7856   0.277   0.7820  
-    ## as.factor(month)7  145.3610   112.7856   1.289   0.2004  
-    ## as.factor(month)8   92.9380   115.7156   0.803   0.4238  
-    ## as.factor(month)9   56.0997   115.7156   0.485   0.6289  
-    ## as.factor(month)10 151.8878   115.7156   1.313   0.1923  
-    ## as.factor(month)11  38.4237   115.7156   0.332   0.7405  
+    ## (Intercept)        -47.0790    81.8450  -0.575   0.5664  
+    ## as.factor(month)1  282.6782   115.7462   2.442   0.0163 *
+    ## as.factor(month)2   89.6428   112.8155   0.795   0.4287  
+    ## as.factor(month)3  129.2708   112.8155   1.146   0.2545  
+    ## as.factor(month)4    0.6077   112.8155   0.005   0.9957  
+    ## as.factor(month)5  209.5082   112.8155   1.857   0.0662 .
+    ## as.factor(month)6   31.2896   112.8155   0.277   0.7821  
+    ## as.factor(month)7  144.6681   112.8155   1.282   0.2026  
+    ## as.factor(month)8   92.9380   115.7462   0.803   0.4239  
+    ## as.factor(month)9   56.0997   115.7462   0.485   0.6289  
+    ## as.factor(month)10 151.8878   115.7462   1.312   0.1924  
+    ## as.factor(month)11  38.4237   115.7462   0.332   0.7406  
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
     ## Residual standard error: 245.5 on 102 degrees of freedom
-    ## Multiple R-squared:  0.1103, Adjusted R-squared:  0.01437 
-    ## F-statistic:  1.15 on 11 and 102 DF,  p-value: 0.3316
+    ## Multiple R-squared:  0.1102, Adjusted R-squared:  0.01422 
+    ## F-statistic: 1.148 on 11 and 102 DF,  p-value: 0.3327
 
 Similar to the daily series, the linear time trend of the monthly series
 is not statistically significant.
@@ -875,29 +875,29 @@ summary(monthreg2)
     ## 
     ## Residuals:
     ##     Min      1Q  Median      3Q     Max 
-    ## -587.69 -145.90  -19.08  140.13  591.83 
+    ## -587.71 -145.94  -18.75  140.21  591.76 
     ## 
     ## Coefficients:
-    ##                      Estimate Std. Error t value Pr(>|t|)  
-    ## (Intercept)        -28.985251  92.010034  -0.315   0.7534  
-    ## count               -0.306673   0.702367  -0.437   0.6633  
-    ## as.factor(month)1  282.984884 116.179600   2.436   0.0166 *
-    ## as.factor(month)2   88.416131 113.270645   0.781   0.4369  
-    ## as.factor(month)3  128.350744 113.255400   1.133   0.2598  
-    ## as.factor(month)4   -0.005635 113.244510   0.000   1.0000  
-    ## as.factor(month)5  209.201558 113.237976   1.847   0.0676 .
-    ## as.factor(month)6   31.289588 113.235797   0.276   0.7829  
-    ## as.factor(month)7  145.667712 113.237976   1.286   0.2012  
-    ## as.factor(month)8   91.711312 116.211442   0.789   0.4319  
-    ## as.factor(month)9   55.179728 116.196583   0.475   0.6359  
-    ## as.factor(month)10 151.274415 116.185969   1.302   0.1959  
-    ## as.factor(month)11  38.117018 116.179600   0.328   0.7435  
+    ##                     Estimate Std. Error t value Pr(>|t|)  
+    ## (Intercept)        -28.80595   92.03269  -0.313   0.7549  
+    ## count               -0.30971    0.70254  -0.441   0.6603  
+    ## as.factor(month)1  282.98792  116.20821   2.435   0.0166 *
+    ## as.factor(month)2   88.40397  113.29854   0.780   0.4371  
+    ## as.factor(month)3  128.34163  113.28329   1.133   0.2599  
+    ## as.factor(month)4   -0.01171  113.27240   0.000   0.9999  
+    ## as.factor(month)5  209.19852  113.26586   1.847   0.0677 .
+    ## as.factor(month)6   31.28959  113.26368   0.276   0.7829  
+    ## as.factor(month)7  144.97785  113.26586   1.280   0.2035  
+    ## as.factor(month)8   91.69916  116.24006   0.789   0.4320  
+    ## as.factor(month)9   55.17061  116.22520   0.475   0.6360  
+    ## as.factor(month)10 151.26834  116.21458   1.302   0.1960  
+    ## as.factor(month)11  38.11398  116.20821   0.328   0.7436  
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## Residual standard error: 246.4 on 101 degrees of freedom
-    ## Multiple R-squared:  0.112,  Adjusted R-squared:  0.006483 
-    ## F-statistic: 1.061 on 12 and 101 DF,  p-value: 0.4005
+    ## Residual standard error: 246.5 on 101 degrees of freedom
+    ## Multiple R-squared:  0.1119, Adjusted R-squared:  0.006376 
+    ## F-statistic:  1.06 on 12 and 101 DF,  p-value: 0.4014
 
 Now let’s plot out the full time series decomposition of the monthly
 series. Since this is one of the more meaningful decompositions we’ll
@@ -1049,65 +1049,65 @@ summary(monthhalfreg)
     ## 
     ## Residuals:
     ##     Min      1Q  Median      3Q     Max 
-    ## -578.38  -89.66    0.08   82.05  578.38 
+    ## -578.31  -89.75    0.18   82.03  578.31 
     ## 
     ## Coefficients:
     ##                          Estimate Std. Error t value Pr(>|t|)  
-    ## (Intercept)               4.74894  178.03152   0.027   0.9788  
-    ## count                    -0.01834    0.70408  -0.026   0.9793  
-    ## as.factor(monthhalf)1  -211.39197  220.91734  -0.957   0.3422  
-    ## as.factor(monthhalf)2  -113.32598  220.86685  -0.513   0.6096  
-    ## as.factor(monthhalf)3   -56.12196  220.81859  -0.254   0.8002  
-    ## as.factor(monthhalf)4   102.35238  220.77256   0.464   0.6445  
-    ## as.factor(monthhalf)5    88.21254  220.72877   0.400   0.6907  
-    ## as.factor(monthhalf)6    99.70601  220.68722   0.452   0.6529  
-    ## as.factor(monthhalf)7   145.63430  220.64790   0.660   0.5116  
-    ## as.factor(monthhalf)8   187.83964  220.61083   0.851   0.3976  
-    ## as.factor(monthhalf)9   -16.89189  220.57600  -0.077   0.9392  
-    ## as.factor(monthhalf)10 -155.22089  220.54341  -0.704   0.4841  
-    ## as.factor(monthhalf)11  -37.45983  220.51306  -0.170   0.8656  
-    ## as.factor(monthhalf)12  252.60742  220.48496   1.146   0.2561  
-    ## as.factor(monthhalf)13   25.30886  220.45910   0.115   0.9090  
-    ## as.factor(monthhalf)14   74.39585  220.43549   0.337   0.7368  
-    ## as.factor(monthhalf)15   42.32053  220.41412   0.192   0.8483  
-    ## as.factor(monthhalf)16  176.54823  220.39500   0.801   0.4260  
-    ## as.factor(monthhalf)17  -77.64916  220.37813  -0.352   0.7257  
-    ## as.factor(monthhalf)18   99.74422  220.36351   0.453   0.6523  
-    ## as.factor(monthhalf)19  151.21305  242.21393   0.624   0.5346  
-    ## as.factor(monthhalf)20  117.26617  242.15559   0.484   0.6298  
-    ## as.factor(monthhalf)21   79.73529  242.09929   0.329   0.7430  
-    ## as.factor(monthhalf)22  -34.49323  242.04502  -0.143   0.8871  
-    ## as.factor(monthhalf)23  -17.09022  241.99279  -0.071   0.9439  
-    ## as.factor(monthhalf)24  226.90619  241.94259   0.938   0.3518  
-    ## as.factor(monthhalf)25  245.38944  241.89444   1.014   0.3141  
-    ## as.factor(monthhalf)26  384.38094  241.84832   1.589   0.1168  
-    ## as.factor(monthhalf)27   79.88547  241.80425   0.330   0.7422  
-    ## as.factor(monthhalf)28  299.37570  241.76222   1.238   0.2201  
-    ## as.factor(monthhalf)29   98.39251  241.72223   0.407   0.6853  
-    ## as.factor(monthhalf)30  121.74680  241.68429   0.504   0.6161  
-    ## as.factor(monthhalf)31   51.57352  241.64839   0.213   0.8317  
-    ## as.factor(monthhalf)32    7.23080  241.61454   0.030   0.9762  
-    ## as.factor(monthhalf)33  188.16985  241.58273   0.779   0.4389  
-    ## as.factor(monthhalf)34  366.55712  241.55298   1.518   0.1340  
-    ## as.factor(monthhalf)35  -96.64810  241.52527  -0.400   0.6904  
-    ## as.factor(monthhalf)36  437.96022  241.49961   1.814   0.0744 .
-    ## as.factor(monthhalf)37  227.85266  241.47600   0.944   0.3489  
-    ## as.factor(monthhalf)38   66.36309  241.45445   0.275   0.7843  
-    ## as.factor(monthhalf)39 -310.05808  241.43494  -1.284   0.2036  
-    ## as.factor(monthhalf)40   75.99292  241.41749   0.315   0.7539  
-    ## as.factor(monthhalf)41 -211.51956  241.40209  -0.876   0.3841  
-    ## as.factor(monthhalf)42   52.24481  241.38874   0.216   0.8293  
-    ## as.factor(monthhalf)43 -231.70401  241.37744  -0.960   0.3407  
-    ## as.factor(monthhalf)44 -382.41206  241.36820  -1.584   0.1180  
-    ## as.factor(monthhalf)45  212.40564  241.36101   0.880   0.3821  
-    ## as.factor(monthhalf)46 -154.76539  241.35588  -0.641   0.5236  
-    ## as.factor(monthhalf)47  -58.42888  241.35280  -0.242   0.8095  
+    ## (Intercept)               4.95273  178.10902   0.028   0.9779  
+    ## count                    -0.02117    0.70439  -0.030   0.9761  
+    ## as.factor(monthhalf)1  -211.45707  221.01352  -0.957   0.3422  
+    ## as.factor(monthhalf)2  -113.38825  220.96301  -0.513   0.6096  
+    ## as.factor(monthhalf)3   -56.18140  220.91472  -0.254   0.8001  
+    ## as.factor(monthhalf)4   102.29577  220.86868   0.463   0.6448  
+    ## as.factor(monthhalf)5    88.15876  220.82487   0.399   0.6910  
+    ## as.factor(monthhalf)6    99.65506  220.78330   0.451   0.6532  
+    ## as.factor(monthhalf)7   145.58618  220.74396   0.660   0.5119  
+    ## as.factor(monthhalf)8   187.79435  220.70687   0.851   0.3980  
+    ## as.factor(monthhalf)9   -16.93434  220.67203  -0.077   0.9391  
+    ## as.factor(monthhalf)10 -155.26052  220.63942  -0.704   0.4841  
+    ## as.factor(monthhalf)11  -37.49662  220.60906  -0.170   0.8656  
+    ## as.factor(monthhalf)12  252.57345  220.58095   1.145   0.2564  
+    ## as.factor(monthhalf)13   25.27773  220.55508   0.115   0.9091  
+    ## as.factor(monthhalf)14   74.36755  220.53146   0.337   0.7370  
+    ## as.factor(monthhalf)15   42.29505  220.51008   0.192   0.8485  
+    ## as.factor(monthhalf)16  176.52558  220.49095   0.801   0.4263  
+    ## as.factor(monthhalf)17  -77.66897  220.47408  -0.352   0.7258  
+    ## as.factor(monthhalf)18   97.41757  220.45945   0.442   0.6600  
+    ## as.factor(monthhalf)19  151.13096  242.31938   0.624   0.5350  
+    ## as.factor(monthhalf)20  117.18692  242.26102   0.484   0.6302  
+    ## as.factor(monthhalf)21   79.65887  242.20469   0.329   0.7433  
+    ## as.factor(monthhalf)22  -34.56682  242.15040  -0.143   0.8869  
+    ## as.factor(monthhalf)23  -17.16098  242.09814  -0.071   0.9437  
+    ## as.factor(monthhalf)24  226.83826  242.04793   0.937   0.3521  
+    ## as.factor(monthhalf)25  245.32434  241.99975   1.014   0.3145  
+    ## as.factor(monthhalf)26  384.31867  241.95361   1.588   0.1170  
+    ## as.factor(monthhalf)27   79.82603  241.90952   0.330   0.7425  
+    ## as.factor(monthhalf)28  299.31909  241.86747   1.238   0.2203  
+    ## as.factor(monthhalf)29   98.33873  241.82747   0.407   0.6856  
+    ## as.factor(monthhalf)30  121.69585  241.78951   0.503   0.6164  
+    ## as.factor(monthhalf)31   51.52541  241.75359   0.213   0.8319  
+    ## as.factor(monthhalf)32    7.18551  241.71973   0.030   0.9764  
+    ## as.factor(monthhalf)33  188.12739  241.68791   0.778   0.4392  
+    ## as.factor(monthhalf)34  366.51749  241.65814   1.517   0.1342  
+    ## as.factor(monthhalf)35  -96.68490  241.63042  -0.400   0.6904  
+    ## as.factor(monthhalf)36  437.92625  241.60475   1.813   0.0745 .
+    ## as.factor(monthhalf)37  227.82153  241.58113   0.943   0.3492  
+    ## as.factor(monthhalf)38   66.33478  241.55957   0.275   0.7845  
+    ## as.factor(monthhalf)39 -310.08355  241.54005  -1.284   0.2038  
+    ## as.factor(monthhalf)40   75.97028  241.52259   0.315   0.7541  
+    ## as.factor(monthhalf)41 -211.53938  241.50718  -0.876   0.3843  
+    ## as.factor(monthhalf)42   52.22783  241.49383   0.216   0.8295  
+    ## as.factor(monthhalf)43 -231.71816  241.48253  -0.960   0.3408  
+    ## as.factor(monthhalf)44 -382.42338  241.47328  -1.584   0.1181  
+    ## as.factor(monthhalf)45  212.39715  241.46609   0.880   0.3823  
+    ## as.factor(monthhalf)46 -154.77105  241.46095  -0.641   0.5238  
+    ## as.factor(monthhalf)47  -58.43171  241.45787  -0.242   0.8095  
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## Residual standard error: 241.4 on 65 degrees of freedom
-    ## Multiple R-squared:  0.4519, Adjusted R-squared:  0.04716 
-    ## F-statistic: 1.117 on 48 and 65 DF,  p-value: 0.3364
+    ## Residual standard error: 241.5 on 65 degrees of freedom
+    ## Multiple R-squared:  0.4516, Adjusted R-squared:  0.0467 
+    ## F-statistic: 1.115 on 48 and 65 DF,  p-value: 0.3379
 
 ``` r
 # Create output pdf file for the plot, plot it, and save file.
@@ -1145,7 +1145,7 @@ BTCts_Close |> seas() ##|> view()
     ## 
     ## Coefficients:
     ## AR-Nonseasonal-01  
-    ##            0.1773
+    ##            0.1771
 
 The above output shows us some of the results from the time series model
 that was estimated (X-13 ARIMA-SEATS). This is identified even for the
@@ -1168,4 +1168,4 @@ BTCts_AnnRet |> seas() ## |> view()
     ## 
     ## Coefficients:
     ##          Constant  AR-Nonseasonal-01  
-    ##           55.0065             0.1359
+    ##           54.9365             0.1357
