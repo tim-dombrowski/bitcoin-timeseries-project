@@ -19,21 +19,21 @@ library(renv)
 renv::restore(clean=TRUE, lockfile="../renv.lock")
 # Load in the packages
 library(quantmod)
+library(tidyverse)
+library(scales)
 library(tseries)
-library(ggplot2)
 library(seasonal)
 library(seasonalview)
 library(rmarkdown)
-library(stringr)
 ```
 
 * The [quantmod package](https://cran.r-project.org/package=quantmod) contains tools for importing and analyzing financial data.
-* The [ggplot2 package](https://cran.r-project.org/package=ggplot2) for graphics and visuals.
+* The [tidyverse package](https://www.tidyverse.org/) contains a suite of packages for data manipulation and visualization.
+* The [scales package](https://cran.r-project.org/package=scales) has tools for changing the format of axis labels in plots (e.g. dollar amounts, percentages, etc.)
 * The [tseries package](https://cran.r-project.org/package=tseries) contains additional time series analysis functions that we will explore.
 * The [seasonal package](https://cran.r-project.org/package=seasonal) contains an interface to the [Census X-13-ARIMA-SEATS model](https://www.census.gov/data/software/x13as.html).
 * The [seasonalview package](https://cran.r-project.org/package=seasonalview) brings a graphical user interface to that Census model.
 * The [rmarkdown package](https://cran.r-project.org/package=rmarkdown) is used to generate this R Notebook.
-* The [stringr package](https://cran.r-project.org/package=stringr) is another package used by R Markdown to compile R Notebooks.
 
 Since the rmarkdown functionality is built into RStudio, this last one is automatically loaded when you open RStudio. So no need to use the `library()` function for it. Another observation to make about the code chunk above is that it is labeled as `setup`, which is a special name, which the R Notebook will recognize and automatically run prior to running any other code chunk. This is useful for loading in packages and setting up other global options that will be used throughout the notebook. 
 
@@ -51,19 +51,19 @@ As long as you have downloaded the entire project repository, the renv chunk abo
 
 ```{r setup2, results='hide', message=FALSE, eval=FALSE}
 # Create list of packages needed for this exercise, omit geckor since its not on CRAN
-list.of.packages = c("quantmod","ggplot2","tseries","seasonal","seasonalview","rmarkdown","stringr")
+list.of.packages = c("quantmod","tidyverse","scales","tseries","seasonal","seasonalview","rmarkdown")
 # Check if any have not yet been installed
 new.packages = list.of.packages[!(list.of.packages %in% installed.packages()[,"Package"])]
 # If any need to be installed, install them
 if(length(new.packages)) install.packages(new.packages)
-# Since geckor is no longer published to CRAN, install via GitHub
+# Load in the packages
 library(quantmod)
+library(tidyverse)
+library(scales)
 library(tseries)
-library(ggplot2)
 library(seasonal)
 library(seasonalview)
 library(rmarkdown)
-library(stringr)
 ```
 
 
@@ -71,7 +71,7 @@ library(stringr)
 
 The `getSymbols()` function from the quantmod package let's us import the daily price data for bitcoin. The `src="yahoo"` argument specifies that we want to pull the data from Yahoo Finance. The `from` and `to` arguments specify the date range for the data, which goes back to October 2014 for bitcoin. Rather that assigning a variable name to the output of `getSymbols()`, the function creates a new variable for each ticker in the list, named after the ticker. For bitcoin in particular, the `"BTC-USD"` can be tedious to work with since the presence of a dash requires one to wrap the variable name in backticks. This is resolved in the last line of the code chunk below by creating a new variable `BTC` to be used instead.
 
-```{r assetdata, results='hide'}
+```{r assetdata, results='hide', warning=FALSE}
 startdate = "2014-10-01"
 tickers = c("BTC-USD")
 getSymbols(tickers,
@@ -81,7 +81,13 @@ getSymbols(tickers,
 BTC = `BTC-USD`
 ```
 
-Now that we have the daily bitcoin price series, let's extract the close prices into a univariate xts object. Then we can rename the column to `"Close"` to keep variable names simple. After that, let's aggregate the daily prices to weekly and monthly series to compare the time series properties at different frequencies. The xts package (which is a dependency of quantmod) allows us to easily convert the daily price data into weekly or monthly OHLC series using `to.weekly()` and `to.monthly()`. The `name=NULL` option in those functions prevents the variable names from including the name of the original object. So instead of `BTCweeksOHLC2$``BTCdaily$Close.Close`` `, we can just use `BTCweeksOHLC$Close`. 
+If the code chunk above generates an error about missing values, this can occur due to the most recent observation having a missing value. To resolve this, we can just filter the data with `complete.cases()`, which removes any rows with any missing values.
+
+```{r nomissing}
+BTC = BTC[complete.cases(BTC),]
+```
+
+Now that we have the daily bitcoin price series, let's extract the close prices into a univariate xts object. Then we can rename the column to `"Close"` to keep variable names simple. After that, let's aggregate the daily prices to weekly and monthly series to compare the time series properties at different frequencies. The xts package (which is a dependency of quantmod) allows us to easily convert the daily price data into weekly or monthly OHLC series using `to.weekly()` and `to.monthly()`. The `name=NULL` option in those functions prevents the variable names from including the name of the original object.
 
 ```{r btcfreq}
 # Create daily series and rename column
@@ -99,33 +105,35 @@ BTCmonth = BTCmonthOHLC$Close
 
 ### Basic Price Charts
 
-We'll start with some simple plots of the BTC price series that we downloaded. Starting with the daily chart, then weekly and monthly.
+We'll start with some simple plots of the BTC price series that we downloaded. Starting with the daily chart, then weekly and monthly. The [ggplot2 package](https://ggplot2.tidyverse.org/) (part of tidyverse) is used to generate the plots. The first element of the plot will be a line chart (`geom_line()`) of the price series. Note that the `index()` function is used to extract the date index from the xts object for the plot. Then we'll clear out the x-axis label with `xlab("")` since the dates are self-explanatory. The y-axis labels are formatted as dollar amounts using the `dollar_format()` function from the scales package, and the `ggtitle()` function is used to add a title to each plot.
 
-```{r btcplotraw}
+```{r btcplotraw, warning=FALSE}
 ggplot() +
   geom_line(aes(x=index(BTCdaily),y=BTCdaily)) +
   xlab("") +
+  scale_y_continuous(labels=dollar_format()) +
   ggtitle("Daily Bitcoin Price Series (Oct. 2014 - present)")
 
 ggplot() +
   geom_line(aes(x=index(BTCweeks),y=BTCweeks)) +
   xlab("") +
+  scale_y_continuous(labels=dollar_format()) +
   ggtitle("Weekly Bitcoin Price Series (Oct. 2014 - present)")
 
 ggplot() +
   geom_line(aes(x=index(BTCmonth),y=BTCmonth)) +
   xlab("") +
-  ggtitle("Monthly Bitcoin Price Series (Oct. 2014 - present)")
+  ggtitle("Monthly Bitcoin Price Series (Oct. 2014 - present)") +
+  scale_y_continuous(labels=dollar_format())
 ```
 
-  
 ### Log Price Charts
 
-In regard to statistical analysis of time series data, one drawback of the price series above is that they are non-stationary. This will be explored in more detail below, but it is visually depicted in the plots above through the observation that the mean value of the series is not constant over time. To resolve this, we can convert the price series to a stationary process by effectively taking its derivative. By using log returns, we effectively assume continuous compounding of the price series, which reflects the 24/7 365 nature of cryptocurrency markets.
+In regard to statistical analysis of time series data, one drawback of the price series above is that they are non-stationary. This will be explored in more detail below, but it is visually depicted in the plots above through the observation that the mean value of the series is not constant over time. To resolve this, we can convert the price series to a stationary process by taking its derivative or differencing observations over time to measure price changes (or returns). By using log returns, we effectively assume continuous compounding of the price series, which reflects the 24/7 365 nature of cryptocurrency markets.
 
 $$r_t = \ln(P_t) - \ln(P_{t-1}) = \ln\left(\dfrac{P_t}{P_{t-1}}\right)$$
 
-The first step in calculating continuously compounded growth rates is to take the natural logarithm of the prices. To visualize this transformation, let's apply two approaches for plotting out the logged price charts. The first approach is to simply compute the log(prices) within the ggplot specifications:
+The first step in calculating continuously compounded growth rates is to take the natural logarithm of the prices. To visualize this transformation, let's apply two approaches for plotting out the log price charts. The first approach is to simply compute the log(prices) within the ggplot specifications. However, note that the scaling on the y-axis is hard to interpret. The second approach will keep the original dollar format with logarithmic scaling.
 
 ```{r btcplotlog}
 ggplot() +
@@ -144,28 +152,27 @@ ggplot() +
   ggtitle("Monthly Bitcoin Log Price Series (Oct. 2014 - present)")
 ```
 
-Alternatively, we can generate the same charts by instead plotting the non-logged price series with a logarithmic y-axis. This is done in `ggplot` with the `scale_y_continuous(transform='log10')` setting.
+Alternatively, we can generate the same charts by instead plotting the non-logged price series with a logarithmic y-axis. This is done in `ggplot` with the `scale_y_continuous(transform='log10')` setting. Then the `largest_with_cents=1` argument is added to the `dollar_format()` function to remove decimals/cents from the y-axis labels.
 
 ```{r btcplotlog_alt}
 ggplot() +
   geom_line(aes(x=index(BTCdaily), y=BTCdaily)) +
-  scale_y_continuous(transform='log10') +
+  scale_y_continuous(transform='log10', labels=dollar_format(largest_with_cents=1)) +
   xlab("") +
   ggtitle("Daily Bitcoin Price Series with Logarithmic Y-axis Scaling")
 
 ggplot() +
   geom_line(aes(x=index(BTCweeks), y=BTCweeks)) +
-  scale_y_continuous(transform='log10') +
+  scale_y_continuous(transform='log10', labels=dollar_format(largest_with_cents=1)) +
   xlab("") +
   ggtitle("Weekly Bitcoin Price Series with Logarithmic Y-axis Scaling")
 
 ggplot() +
   geom_line(aes(x=index(BTCmonth), y=BTCmonth)) +
-  scale_y_continuous(transform='log10') +
+  scale_y_continuous(transform='log10', labels=dollar_format(largest_with_cents=1)) +
   xlab("") +
   ggtitle("Monthly Bitcoin Price Series with Logarithmic Y-axis Scaling")
 ```
-
 
 ### Log Return Charts
 
@@ -190,32 +197,34 @@ rBTCweeks = rBTCweeks[-1,]
 rBTCmonth = rBTCmonth[-1,]
 ```
 
-With these return series, we resolve much of the non-stationarity present in the price series. With a more stationary process like returns, a better way to plot the data is with a bar chart. The average bar height (red dashed line) represents the average annual return.
+With these return series, we resolve much of the non-stationarity present in the price series. With a more stationary process like returns, a better way to plot the data is with a bar chart. The average bar height (red dashed line) represents the average annual return. The `percent_format()` function from the scales package is used to convert the y-axis labels to percentages, and the `scale=1` parameter prevents it from treating the percentage unit variables as decimals.
 
 ```{r btcplotret}
 ggplot(rBTCdaily,aes(x=Date,y=AnnRet))+
   geom_col()+
   geom_hline(yintercept=mean(rBTCdaily$AnnRet), linetype='dashed', col='red')+
   xlab("") +
+  scale_y_continuous(labels=percent_format(scale=1)) +
   ggtitle("BTC Annualized Daily Returns")
 
 ggplot(rBTCweeks,aes(x=Date,y=AnnRet))+
   geom_col()+
   geom_hline(yintercept=mean(rBTCdaily$AnnRet), linetype='dashed', col='red')+
   xlab("") +
+  scale_y_continuous(labels=percent_format(scale=1)) +
   ggtitle("BTC Annualized Weekly Returns")
 
 ggplot(rBTCmonth,aes(x=Date,y=AnnRet))+
   geom_col()+
   geom_hline(yintercept=mean(rBTCmonth$AnnRet), linetype='dashed', col='red')+
   xlab("") +
+  scale_y_continuous(labels=percent_format(scale=1)) +
   ggtitle("BTC Annualized Monthly Returns")
 ```
 
-
 ### Summary Statistics
 
-In summarizing the return series, we can compare across the various frequencies. Since we annualized each series for their respective frequencies, the means of each series represent the average annual returns.
+In summarizing the return series, we can compare across the various frequencies. Since we annualized each series for its respective frequency, the means represent the average annual returns for BTC.
 
 ```{r btcretmean}
 meanAnnRets = data.frame(BTCdaily=mean(rBTCdaily$AnnRet), 
@@ -224,7 +233,7 @@ meanAnnRets = data.frame(BTCdaily=mean(rBTCdaily$AnnRet),
 meanAnnRets |> round(digits=2)
 ```
 
-However, from the volatilities (as measured by standard deviation of the return series), we can see that the higher frequencies produce larger standard deviations.
+From the volatilities (as measured by standard deviation of the return series), we can see that the higher frequencies produce larger standard deviations.
 
 ```{r btcretvol}
 meanRetVols = data.frame(BTCdaily=sd(rBTCdaily$AnnRet), 
@@ -247,6 +256,7 @@ ggplot(rBTCdaily,aes(AnnRet)) +
                                       sd=sd(rBTCdaily$AnnRet))*n_daily*bw, 
                 color="darkred", linewidth=1) +
   xlab("Annualized Daily Growth Rates") +
+  scale_x_continuous(labels=percent_format(scale=1)) +
   ylab("Frequency")
 
 bw = 100
@@ -257,6 +267,7 @@ ggplot(rBTCweeks,aes(AnnRet)) +
                                       sd=sd(rBTCweeks$AnnRet))*n_weeks*bw, 
                 color="darkred", linewidth=1) +
   xlab("Annualized Weekly Growth Rates") +
+  scale_x_continuous(labels=percent_format(scale=1)) +
   ylab("Frequency")
 
 bw = 50
@@ -267,6 +278,7 @@ ggplot(rBTCmonth,aes(AnnRet)) +
                                       sd=sd(rBTCmonth$AnnRet,))*n_month*bw, 
                 color="darkred", linewidth=1) +
   xlab("Annualized Monthly Growth Rates") +
+  scale_x_continuous(labels=percent_format(scale=1)) +
   ylab("Frequency")
 ```
 
@@ -275,7 +287,9 @@ The plots above show how the daily and weekly return series more closely resembl
 
 ## Time Series Stationarity, Autocorrelation, and the Dickey-Fuller Test
 
-A [Stationary](https://en.wikipedia.org/wiki/Stationary_process) [Process](https://www.itl.nist.gov/div898/handbook/pmc/section4/pmc442.htm) is one that has a constant mean, variance, and autocorrelation structure over time. A [Non-Stationary Process](https://www.investopedia.com/articles/trading/07/stationary.asp) can have different aspects of non-stationarity, and financial variables often exhibit those types of trends. As we could visually see from the price and return plots, the prices had a clear upward trend over the long-run, whereas the return series exhibited 'flatter' dynamics. A more explicit way to visualize the autocorrelation structure of the time series is to examine its [autocorrelation function (ACF)](https://www.itl.nist.gov/div898/handbook/eda/section3/autocopl.htm). The ACF effectively measures the correlation between $e_t$ and $e_{t−1}$, and then for $e_t$ and $e_{t−2}$, and so on for as many lags as desired. In each frequency, the price series exhibits substantial autocorrelation, and the return series shows that much of it is resolved, although there still are a few lags that exceed the error bands.
+A [Stationary](https://search.brave.com/search?q=stationary+time+series) [Process](https://www.itl.nist.gov/div898/handbook/pmc/section4/pmc442.htm) is one that has a constant mean, variance, and autocorrelation structure over time. A [Non-Stationary Process](https://search.brave.com/search?q=non-stationary+time+series) can have different aspects of non-stationarity, and financial variables often exhibit those types of trends. As we could visually see from the price and return plots, the prices had a clear upward trend over the long-run, whereas the return series exhibited 'flatter' dynamics. 
+
+A more explicit way to model and visualize the autocorrelation structure of the time series is to examine its [autocorrelation function (ACF)](https://www.itl.nist.gov/div898/handbook/eda/section3/autocopl.htm). The ACF effectively measures the correlation between $e_t$ and $e_{t−1}$, and then for $e_t$ and $e_{t−2}$, and so on for as many lags as desired. In each frequency, the price series exhibits substantial autocorrelation, and the return series shows that much of it is resolved, although there still are a few lags that exceed the error bands.
 
 ```{r btcacf}
 acf(as.numeric(BTCdaily))
@@ -301,7 +315,9 @@ pacf(as.numeric(BTCmonth))
 pacf(rBTCmonth$AnnRet)
 ```
 
-From the ACF and PACF, we can gather some visual evidence to support the suggestion that the price series suffers from autocorrelation (non-stationarity) and that the return series is stationary. To explicitly test for this, the [Augmented](https://en.wikipedia.org/wiki/Augmented_Dickey%E2%80%93Fuller_test) [Dickey-Fuller](https://www.rdocumentation.org/packages/aTSA/versions/3.1.2/topics/adf.test) [Test](https://cran.r-project.org/web/packages/tseries/tseries.pdf) allows us to construct a null hypothesis of non-stationarity, which implies that rejection of the null concludes stationarity. The `adf.test()` function comes from the `tseries` R package and generates the test statistic (Dickey-Fuller in the output) and p-value. We can see that the price series have smaller (in magnitude) test statistics that fail to reject the null, and then the return series produce larger (in magnitude) test statistics that reject the null and conclude that the return series are a stationary process.
+From the ACF and PACF, we can gather some visual evidence to support the suggestion that the price series suffers from autocorrelation (non-stationarity) and that the return series is stationary. To explicitly test for this, the [Augmented](https://search.brave.com/search?q=adf+test) [Dickey-Fuller](https://www.rdocumentation.org/packages/aTSA/versions/3.1.2/topics/adf.test) [Test](https://cran.r-project.org/web/packages/tseries/tseries.pdf) allows us to construct a null hypothesis of non-stationarity, which implies that rejection of the null concludes stationarity. 
+
+The `adf.test()` function from the tseries package generates the test statistic (Dickey-Fuller in the output) and p-value. We can see that the price series have smaller (in magnitude) test statistics that fail to reject the null, and then the return series produce larger (in magnitude) test statistics that reject the null and conclude that the return series are a stationary process.
 
 ```{r btcadf}
 adf.test(as.numeric(BTCdaily))
@@ -321,9 +337,9 @@ If you want to dig deeper into the theory and underlying assumptions behind thes
 
 ### Day-of-Week Seasonality
 
-Another area of concern when it comes to stationarity of a time series is seasonality. For the time series that we have here, the first type of 'season' to check is day of the week for the daily series. One way to do this is to generate a count variable ($count=1,2,...,T$), and then calculate the remainder after dividing by 7. This [modulo operation](https://en.wikipedia.org/wiki/Modulo_operation) is done with `%%` in R. Then a quick test for seasonality is to regress the return series on a factor variable of the remainders. The `as.factor()` function will transform the numeric variable into a categorical variable with 7 categories. 
+Another area of concern when it comes to stationarity of a time series is seasonality. For the data that we have here, the first type of *season* to explore is day-of-week seasonality. One way to do this is to generate a count variable ($count=1,2,...,T$), and then calculate the remainder after dividing by 7. This [modulo operation](https://en.wikipedia.org/wiki/Modulo_operation) is done with `%%` in R. Then a quick test for seasonality is to regress the return series on a factor variable of the remainders. The `as.factor()` function will transform the numeric variable into a categorical variable with 7 categories. 
 
-Another important piece to note in the second line below is that the `+6` is used to shift which day of the week is set to the reference category in the regression model. The 6-day shift was selected by first running the regression without the shift and examining the estimates for the day dummies. Since `as.factor(day)1` produced the most negative estimate, then incrementing the count variable by two would shift that up to 7, and $7 \mod 7 = 0$. 
+Another important piece to note in the second line below is that the `+6` is used to shift which day of the week is set to the reference category in the regression model. The 6-day shift was selected by first running the regression without the shift and examining the estimates for the day dummies. Since `as.factor(day)1` (Friday) produced the most negative estimate, the increment of 6 to the count variable by shift that up to 7, and $7 \mod 7 = 0$.
 
 Thus, after increasing the count, the most negative day will be the baseline, and all the day dummies should produce a positive coefficient. This shift will maximize the likelihood that we find a significant result from the regression by comparing each other day to one of the extremes.
 
