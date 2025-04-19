@@ -1,6 +1,6 @@
 Bitcoin Price Time Series Analysis
 ================
-Last updated: 2024-04-18
+Last updated: 2025-04-19
 
 ## Preliminary Work: Install/Load Packages
 
@@ -101,7 +101,7 @@ in this notebook if any of the updates aren’t backwards compatible.
 As long as you have downloaded the entire project repository, the renv
 chunk above will likely be managing the packages. Thus, the `eval=FALSE`
 option is used to prevent this chunk from running unless manually
-executed. So if you only downloaded this one Rmd file, this code chunk
+executed. But if you only downloaded this one Rmd file, this code chunk
 should take care of installing the packages for you.
 
 ``` r
@@ -121,6 +121,22 @@ library(seasonalview)
 library(rmarkdown)
 ```
 
+### Set Directories and Paths
+
+Set up paths to save data files and other relevant directories:
+
+``` r
+# Create general data directory in project root
+datadir = "../Data/"
+if(!dir.exists(datadir)) dir.create(datadir)
+# Create raw data directory within data directory
+rawdir = paste0(datadir,"Raw/")
+if(!dir.exists(rawdir)) dir.create(rawdir)
+# Create a figures directory in project root
+figdir = "../Figures/"
+if(!dir.exists(figdir)) dir.create(figdir)
+```
+
 ## Bitcoin Data Import and Cleaning
 
 The `getSymbols()` function from the quantmod package let’s us import
@@ -136,13 +152,19 @@ the last line of the code chunk below by creating a new variable `BTC`
 to be used instead.
 
 ``` r
+# Set parameters and download data
 startdate = "2014-10-01"
 tickers = c("BTC-USD")
 getSymbols(tickers,
            src="yahoo",
            from=startdate,
            to=Sys.Date())
+# Create a copy with a simpler name
 BTC = `BTC-USD`
+# Save the data to a csv file
+write.csv(BTC, file=paste0(rawdir,"BTC_daily_all.csv"), row.names=FALSE)
+# Delete old variable to minimize memory usage
+rm(`BTC-USD`)
 ```
 
 If the code chunk above generates an error about missing values, this
@@ -171,8 +193,10 @@ names(BTCdaily) = "Close"
 # Convert to weekly and monthly series
 BTCweeksOHLC = to.weekly(BTCdaily$Close, name=NULL)
 BTCweeks = BTCweeksOHLC$Close
+write.csv(BTCweeks, file=paste0(rawdir,"BTC_weekly_all.csv"), row.names=FALSE)
 BTCmonthOHLC = to.monthly(BTCdaily$Close, name=NULL)
 BTCmonth = BTCmonthOHLC$Close
+write.csv(BTCmonth, file=paste0(rawdir,"BTC_monthly_all.csv"), row.names=FALSE)
 ```
 
 ## Exploring the Full Bitcoin Price Series
@@ -188,49 +212,68 @@ function is used to extract the date index from the xts object for the
 plot. Then we’ll clear out the x-axis label with `xlab("")` since the
 dates are self-explanatory. The y-axis labels are formatted as dollar
 amounts using the `dollar_format()` function from the scales package,
-and the `ggtitle()` function is used to add a title to each plot.
+and the `ggtitle()` function is used to add a title to each plot. After
+each plot is created, it is displayed in the notebook and then saved
+using `ggsave()`. *Note: For the monthly plot, the y input needed to be
+formatted back to a Date since the scale package does not appear to be
+compatible with the yearmon format.*
 
 ``` r
-ggplot() +
+BTCdaily_plot_price = ggplot() +
   geom_line(aes(x=index(BTCdaily),y=BTCdaily)) +
   xlab("") +
-  scale_y_continuous(labels=dollar_format()) +
+  scale_x_date(date_labels="%Y", date_breaks="2 year") +
+  scale_y_continuous(labels=dollar_format(), n.breaks=6) +
   ggtitle("Daily Bitcoin Price Series (Oct. 2014 - present)")
+BTCdaily_plot_price
 ```
 
 ![](README_files/figure-gfm/btcplotraw-1.png)<!-- -->
 
 ``` r
-ggplot() +
+ggsave(paste0(figdir,"BTCdaily_plot_price.pdf"), BTCdaily_plot_price, width=8, height=4)
+
+BTCweeks_plot_price = ggplot() +
   geom_line(aes(x=index(BTCweeks),y=BTCweeks)) +
   xlab("") +
-  scale_y_continuous(labels=dollar_format()) +
+  scale_x_date(date_labels="%Y", date_breaks="2 year") +
+  scale_y_continuous(labels=dollar_format(), n.breaks=6) +
   ggtitle("Weekly Bitcoin Price Series (Oct. 2014 - present)")
+BTCweeks_plot_price
 ```
 
 ![](README_files/figure-gfm/btcplotraw-2.png)<!-- -->
 
 ``` r
-ggplot() +
-  geom_line(aes(x=index(BTCmonth),y=BTCmonth)) +
+ggsave(paste0(figdir,"BTCweeks_plot_price.pdf"), BTCweeks_plot_price, width=8, height=4)
+
+BTCmonth_plot_price = ggplot() +
+  geom_line(aes(x=as.Date(index(BTCmonth)),y=BTCmonth)) +
   xlab("") +
-  ggtitle("Monthly Bitcoin Price Series (Oct. 2014 - present)") +
-  scale_y_continuous(labels=dollar_format())
+  scale_x_date(date_labels="%Y", date_breaks="2 year") +
+  scale_y_continuous(labels=dollar_format(), n.breaks=6) +
+  ggtitle("Monthly Bitcoin Price Series (Oct. 2014 - present)")
+BTCmonth_plot_price
 ```
 
 ![](README_files/figure-gfm/btcplotraw-3.png)<!-- -->
 
+``` r
+ggsave(paste0(figdir,"BTCmonth_plot_price.pdf"), BTCmonth_plot_price, width=8, height=4)
+```
+
 ### Log Price Charts
 
 In regard to statistical analysis of time series data, one drawback of
-the price series above is that they are non-stationary. This will be
-explored in more detail below, but it is visually depicted in the plots
-above through the observation that the mean value of the series is not
-constant over time. To resolve this, we can convert the price series to
-a stationary process by taking its derivative or differencing
-observations over time to measure price changes (or returns). By using
-log returns, we effectively assume continuous compounding of the price
-series, which reflects the 24/7 365 nature of cryptocurrency markets.
+the directly analyzing the price series above is that they are
+*non-stationary*. This property will be explored in more detail below,
+but it is visually depicted in the plots above through the observation
+that the mean value (and variance) of the series is not constant over
+time. To resolve this, we can convert the price series to a stationary
+process by taking its derivative (or by differencing the observations
+over time to measure price changes/returns). By using log returns, we
+effectively assume continuous compounding of the price series, which
+reflects the perpetual nature of cryptocurrency markets.
 
 $$r_t = \ln(P_t) - \ln(P_{t-1}) = \ln\left(\dfrac{P_t}{P_{t-1}}\right)$$
 
@@ -240,7 +283,8 @@ transformation, let’s apply two approaches for plotting out the log
 price charts. The first approach is to simply compute the log(prices)
 within the ggplot specifications. However, note that the scaling on the
 y-axis is hard to interpret. The second approach will keep the original
-dollar format with logarithmic scaling.
+dollar format with logarithmic scaling. Since the second version will be
+more intuitive, we won’t bother saving these to files.
 
 ``` r
 ggplot() +
@@ -285,34 +329,48 @@ the `largest_with_cents=1` argument is added to the `dollar_format()`
 function to remove decimals/cents from the y-axis labels.
 
 ``` r
-ggplot() +
+BTCdaily_plot_logprice = ggplot() +
   geom_line(aes(x=index(BTCdaily), y=BTCdaily)) +
+  scale_x_date(date_labels="%Y", date_breaks="2 year") +
   scale_y_continuous(transform='log10', labels=dollar_format(largest_with_cents=1)) +
   xlab("") +
   ggtitle("Daily Bitcoin Price Series with Logarithmic Y-axis Scaling")
+BTCdaily_plot_logprice
 ```
 
 ![](README_files/figure-gfm/btcplotlog_alt-1.png)<!-- -->
 
 ``` r
-ggplot() +
+ggsave(paste0(figdir,"BTCdaily_plot_logprice.pdf"), BTCdaily_plot_logprice, width=8, height=4)
+
+BTCweeks_plot_logprice = ggplot() +
   geom_line(aes(x=index(BTCweeks), y=BTCweeks)) +
+  scale_x_date(date_labels="%Y", date_breaks="2 year") +
   scale_y_continuous(transform='log10', labels=dollar_format(largest_with_cents=1)) +
   xlab("") +
   ggtitle("Weekly Bitcoin Price Series with Logarithmic Y-axis Scaling")
+BTCweeks_plot_logprice
 ```
 
 ![](README_files/figure-gfm/btcplotlog_alt-2.png)<!-- -->
 
 ``` r
-ggplot() +
-  geom_line(aes(x=index(BTCmonth), y=BTCmonth)) +
+ggsave(paste0(figdir,"BTCweeks_plot_logprice.pdf"), BTCweeks_plot_logprice, width=8, height=4)
+
+BTCmonth_plot_logprice = ggplot() +
+  geom_line(aes(x=as.Date(index(BTCmonth)), y=BTCmonth)) +
+  scale_x_date(date_labels="%Y", date_breaks="2 year") +
   scale_y_continuous(transform='log10', labels=dollar_format(largest_with_cents=1)) +
   xlab("") +
   ggtitle("Monthly Bitcoin Price Series with Logarithmic Y-axis Scaling")
+BTCmonth_plot_logprice
 ```
 
 ![](README_files/figure-gfm/btcplotlog_alt-3.png)<!-- -->
+
+``` r
+ggsave(paste0(figdir,"BTCmonth_plot_logprice.pdf"), BTCmonth_plot_logprice, width=8, height=4)
+```
 
 ### Log Return Charts
 
@@ -354,37 +412,51 @@ the y-axis labels to percentages, and the `scale=1` parameter prevents
 it from treating the percentage unit variables as decimals.
 
 ``` r
-ggplot(rBTCdaily,aes(x=Date,y=AnnRet))+
+BTCdaily_plot_logret = ggplot(rBTCdaily,aes(x=Date,y=AnnRet))+
   geom_col()+
   geom_hline(yintercept=mean(rBTCdaily$AnnRet), linetype='dashed', col='red')+
   xlab("") +
-  scale_y_continuous(labels=percent_format(scale=1)) +
+  scale_x_date(date_labels="%Y", date_breaks="2 year") +
+  scale_y_continuous(labels=percent_format(scale=1), n.breaks=6) +
   ggtitle("BTC Annualized Daily Returns")
+BTCdaily_plot_logret
 ```
 
 ![](README_files/figure-gfm/btcplotret-1.png)<!-- -->
 
 ``` r
-ggplot(rBTCweeks,aes(x=Date,y=AnnRet))+
+ggsave(paste0(figdir,"BTCdaily_plot_logret.pdf"), BTCdaily_plot_logret, width=8, height=4)
+
+BTCweeks_plot_logret = ggplot(rBTCweeks,aes(x=Date,y=AnnRet))+
   geom_col()+
   geom_hline(yintercept=mean(rBTCdaily$AnnRet), linetype='dashed', col='red')+
   xlab("") +
-  scale_y_continuous(labels=percent_format(scale=1)) +
+  scale_x_date(date_labels="%Y", date_breaks="2 year") +
+  scale_y_continuous(labels=percent_format(scale=1), n.breaks=6) +
   ggtitle("BTC Annualized Weekly Returns")
+BTCweeks_plot_logret
 ```
 
 ![](README_files/figure-gfm/btcplotret-2.png)<!-- -->
 
 ``` r
-ggplot(rBTCmonth,aes(x=Date,y=AnnRet))+
+ggsave(paste0(figdir,"BTCweeks_plot_logret.pdf"), BTCweeks_plot_logret, width=8, height=4)
+
+BTCmonth_plot_logret = ggplot(rBTCmonth,aes(x=as.Date(Date),y=AnnRet)) +
   geom_col()+
   geom_hline(yintercept=mean(rBTCmonth$AnnRet), linetype='dashed', col='red')+
   xlab("") +
-  scale_y_continuous(labels=percent_format(scale=1)) +
+  scale_x_date(date_labels="%Y", date_breaks="2 year") +
+  scale_y_continuous(labels=percent_format(scale=1), n.breaks=6) +
   ggtitle("BTC Annualized Monthly Returns")
+BTCmonth_plot_logret
 ```
 
 ![](README_files/figure-gfm/btcplotret-3.png)<!-- -->
+
+``` r
+ggsave(paste0(figdir,"BTCmonth_plot_logret.pdf"), BTCmonth_plot_logret, width=8, height=4)
+```
 
 ### Summary Statistics
 
@@ -400,7 +472,7 @@ meanAnnRets |> round(digits=2)
 ```
 
     ##   BTCdaily BTCweeks BTCmonth
-    ## 1    53.12    54.85    54.73
+    ## 1    51.17    52.77    52.65
 
 From the volatilities (as measured by standard deviation of the return
 series), we can see that the higher frequencies produce larger standard
@@ -414,7 +486,7 @@ meanRetVols |> round(digits=2)
 ```
 
     ##   BTCdaily BTCweeks BTCmonth
-    ## 1  1353.72   513.06   247.63
+    ## 1  1321.95   499.15   240.02
 
 One way to visualize the empirical distribution summarized by the mean
 and standard deviation is to plot a frequency histogram of the return
@@ -442,6 +514,7 @@ ggplot(rBTCdaily,aes(AnnRet)) +
 ![](README_files/figure-gfm/btcplotbell-1.png)<!-- -->
 
 ``` r
+# Same process for weekly series
 bw = 100
 n_weeks = nrow(rBTCweeks)
 ggplot(rBTCweeks,aes(AnnRet)) +
@@ -457,6 +530,7 @@ ggplot(rBTCweeks,aes(AnnRet)) +
 ![](README_files/figure-gfm/btcplotbell-2.png)<!-- -->
 
 ``` r
+# Same process for monthly series
 bw = 50
 n_month = nrow(rBTCmonth)
 ggplot(rBTCmonth,aes(AnnRet)) +
@@ -609,7 +683,7 @@ adf.test(as.numeric(BTCdaily))
     ##  Augmented Dickey-Fuller Test
     ## 
     ## data:  as.numeric(BTCdaily)
-    ## Dickey-Fuller = -2.111, Lag order = 15, p-value = 0.5313
+    ## Dickey-Fuller = -1.9035, Lag order = 15, p-value = 0.6192
     ## alternative hypothesis: stationary
 
 ``` r
@@ -622,7 +696,7 @@ adf.test(rBTCdaily$AnnRet)
     ##  Augmented Dickey-Fuller Test
     ## 
     ## data:  rBTCdaily$AnnRet
-    ## Dickey-Fuller = -14.132, Lag order = 15, p-value = 0.01
+    ## Dickey-Fuller = -14.935, Lag order = 15, p-value = 0.01
     ## alternative hypothesis: stationary
 
 ``` r
@@ -633,7 +707,7 @@ adf.test(as.numeric(BTCweeks))
     ##  Augmented Dickey-Fuller Test
     ## 
     ## data:  as.numeric(BTCweeks)
-    ## Dickey-Fuller = -2.6715, Lag order = 7, p-value = 0.2941
+    ## Dickey-Fuller = -2.7002, Lag order = 8, p-value = 0.2819
     ## alternative hypothesis: stationary
 
 ``` r
@@ -646,7 +720,7 @@ adf.test(rBTCweeks$AnnRet)
     ##  Augmented Dickey-Fuller Test
     ## 
     ## data:  rBTCweeks$AnnRet
-    ## Dickey-Fuller = -7.2163, Lag order = 7, p-value = 0.01
+    ## Dickey-Fuller = -7.0673, Lag order = 8, p-value = 0.01
     ## alternative hypothesis: stationary
 
 ``` r
@@ -657,7 +731,7 @@ adf.test(as.numeric(BTCmonth))
     ##  Augmented Dickey-Fuller Test
     ## 
     ## data:  as.numeric(BTCmonth)
-    ## Dickey-Fuller = -2.6725, Lag order = 4, p-value = 0.2974
+    ## Dickey-Fuller = -1.2332, Lag order = 5, p-value = 0.8952
     ## alternative hypothesis: stationary
 
 ``` r
@@ -670,7 +744,7 @@ adf.test(rBTCmonth$AnnRet)
     ##  Augmented Dickey-Fuller Test
     ## 
     ## data:  rBTCmonth$AnnRet
-    ## Dickey-Fuller = -4.3639, Lag order = 4, p-value = 0.01
+    ## Dickey-Fuller = -4.7107, Lag order = 4, p-value = 0.01
     ## alternative hypothesis: stationary
 
 If you want to dig deeper into the theory and underlying assumptions
@@ -706,7 +780,11 @@ Thus, after increasing the count, the most negative day will be the
 baseline, and all the day dummies should produce a positive coefficient.
 This shift will maximize the likelihood that we find a significant
 result from the regression by comparing each other day to one of the
-extremes.
+extremes. As of April 25, 2025, there is a marginally significant
+finding that day=4 (Mondays) tend to out-perform relative to day=0
+(Thursdays). *Perhaps one could explore how a strategy around this
+observation would perform? Buy at end of Thursday and sell at end of
+Monday?*
 
 ``` r
 rBTCdaily$count = 1:length(rBTCdaily$AnnRet)
@@ -721,23 +799,23 @@ summary(weekreg)
     ## 
     ## Residuals:
     ##      Min       1Q   Median       3Q      Max 
-    ## -16956.8   -508.7      2.8    567.3   8222.7 
+    ## -16953.9   -508.9     -2.0    551.8   8225.6 
     ## 
     ## Coefficients:
     ##                 Estimate Std. Error t value Pr(>|t|)  
-    ## (Intercept)       -5.889     60.668  -0.097   0.9227  
-    ## as.factor(day)1   67.755     85.797   0.790   0.4298  
-    ## as.factor(day)2   61.120     85.797   0.712   0.4763  
-    ## as.factor(day)3   28.527     85.797   0.332   0.7395  
-    ## as.factor(day)4  171.988     85.797   2.005   0.0451 *
-    ## as.factor(day)5   12.217     85.797   0.142   0.8868  
-    ## as.factor(day)6   71.469     85.797   0.833   0.4049  
+    ## (Intercept)       -8.742     56.314  -0.155   0.8766  
+    ## as.factor(day)1   83.500     79.640   1.048   0.2945  
+    ## as.factor(day)2   65.725     79.640   0.825   0.4093  
+    ## as.factor(day)3   16.432     79.676   0.206   0.8366  
+    ## as.factor(day)4  166.392     79.676   2.088   0.0368 *
+    ## as.factor(day)5    8.205     79.676   0.103   0.9180  
+    ## as.factor(day)6   79.219     79.676   0.994   0.3202  
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## Residual standard error: 1354 on 3479 degrees of freedom
-    ## Multiple R-squared:  0.001528,   Adjusted R-squared:  -0.0001936 
-    ## F-statistic: 0.8876 on 6 and 3479 DF,  p-value: 0.5029
+    ## Residual standard error: 1322 on 3846 degrees of freedom
+    ## Multiple R-squared:  0.001672,   Adjusted R-squared:  0.0001144 
+    ## F-statistic: 1.073 on 6 and 3846 DF,  p-value: 0.3759
 
 In addition to testing for seasonality, we can also include the count
 variable as a linear time trend to see if returns are systematically
@@ -755,24 +833,24 @@ summary(weekreg2)
     ## 
     ## Residuals:
     ##      Min       1Q   Median       3Q      Max 
-    ## -16955.2   -509.2      0.6    565.9   8219.1 
+    ## -16953.4   -510.3     -2.0    553.0   8219.9 
     ## 
     ## Coefficients:
-    ##                  Estimate Std. Error t value Pr(>|t|)  
-    ## (Intercept)       4.93717   72.49023   0.068   0.9457  
-    ## count            -0.00622    0.02279  -0.273   0.7849  
-    ## as.factor(day)1  67.76107   85.80845   0.790   0.4298  
-    ## as.factor(day)2  61.13220   85.80846   0.712   0.4762  
-    ## as.factor(day)3  28.54547   85.80848   0.333   0.7394  
-    ## as.factor(day)4 172.01301   85.80850   2.005   0.0451 *
-    ## as.factor(day)5  12.24837   85.80853   0.143   0.8865  
-    ## as.factor(day)6  71.50593   85.80856   0.833   0.4047  
+    ##                   Estimate Std. Error t value Pr(>|t|)  
+    ## (Intercept)       5.592586  67.320588   0.083   0.9338  
+    ## count            -0.007443   0.019148  -0.389   0.6975  
+    ## as.factor(day)1  83.507804  79.648590   1.048   0.2945  
+    ## as.factor(day)2  65.739922  79.648597   0.825   0.4092  
+    ## as.factor(day)3  16.428413  79.684784   0.206   0.8367  
+    ## as.factor(day)4 166.395577  79.684784   2.088   0.0368 *
+    ## as.factor(day)5   8.215834  79.684789   0.103   0.9179  
+    ## as.factor(day)6  79.237393  79.684798   0.994   0.3201  
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## Residual standard error: 1354 on 3478 degrees of freedom
-    ## Multiple R-squared:  0.00155,    Adjusted R-squared:  -0.0004597 
-    ## F-statistic: 0.7712 on 7 and 3478 DF,  p-value: 0.6115
+    ## Residual standard error: 1322 on 3845 degrees of freedom
+    ## Multiple R-squared:  0.001711,   Adjusted R-squared:  -0.0001064 
+    ## F-statistic: 0.9415 on 7 and 3845 DF,  p-value: 0.4729
 
 The models above show the decomposition of an observed time series into
 (1) a trend component, (2) a seasonal component, (3) and a random
@@ -823,7 +901,9 @@ The next level to test for seasonality at is for each month of the year.
 Similar to above, we create a count in the monthly data frame, calculate
 $count \mod 12$ with a 1-month shift (to adjust the baseline to the
 worst month), and then regress the returns on a factor variable of the
-remainders.
+remainders. As of April 25, 2025, there is a marginally significant
+finding that month=1 (October) tends to out-perform relative to month=0
+(September). *How would a “Buy Sept 1, Sell Oct 31” strategy perform?*
 
 ``` r
 rBTCmonth$count = 1:length(rBTCmonth$AnnRet)
@@ -838,28 +918,28 @@ summary(monthreg)
     ## 
     ## Residuals:
     ##     Min      1Q  Median      3Q     Max 
-    ## -585.85 -141.25   -7.95  145.61  599.19 
+    ## -616.61 -131.16   -3.57  136.22  609.30 
     ## 
     ## Coefficients:
     ##                    Estimate Std. Error t value Pr(>|t|)  
-    ## (Intercept)        -47.0790    81.9888  -0.574   0.5671  
-    ## as.factor(month)1  282.6782   115.9497   2.438   0.0165 *
-    ## as.factor(month)2   89.6428   113.0138   0.793   0.4295  
-    ## as.factor(month)3  129.2708   113.0138   1.144   0.2554  
-    ## as.factor(month)4    0.6077   113.0138   0.005   0.9957  
-    ## as.factor(month)5  209.5082   113.0138   1.854   0.0667 .
-    ## as.factor(month)6   31.2896   113.0138   0.277   0.7824  
-    ## as.factor(month)7  140.4555   113.0138   1.243   0.2168  
-    ## as.factor(month)8   92.9380   115.9497   0.802   0.4247  
-    ## as.factor(month)9   56.0997   115.9497   0.484   0.6295  
-    ## as.factor(month)10 151.8878   115.9497   1.310   0.1932  
-    ## as.factor(month)11  38.4237   115.9497   0.331   0.7410  
+    ## (Intercept)         -33.812     75.611  -0.447   0.6556  
+    ## as.factor(month)1   258.237    106.930   2.415   0.0173 *
+    ## as.factor(month)2   107.138    104.472   1.026   0.3073  
+    ## as.factor(month)3   105.062    104.472   1.006   0.3167  
+    ## as.factor(month)4     1.573    104.472   0.015   0.9880  
+    ## as.factor(month)5   160.346    104.472   1.535   0.1276  
+    ## as.factor(month)6    17.074    104.472   0.163   0.8705  
+    ## as.factor(month)7   120.892    104.472   1.157   0.2496  
+    ## as.factor(month)8    87.937    106.930   0.822   0.4126  
+    ## as.factor(month)9    33.053    106.930   0.309   0.7578  
+    ## as.factor(month)10  131.800    106.930   1.233   0.2203  
+    ## as.factor(month)11   15.044    106.930   0.141   0.8884  
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## Residual standard error: 246 on 102 degrees of freedom
-    ## Multiple R-squared:  0.1094, Adjusted R-squared:  0.01336 
-    ## F-statistic: 1.139 on 11 and 102 DF,  p-value: 0.3394
+    ## Residual standard error: 239.1 on 114 degrees of freedom
+    ## Multiple R-squared:  0.09495,    Adjusted R-squared:  0.007621 
+    ## F-statistic: 1.087 on 11 and 114 DF,  p-value: 0.3778
 
 Similar to the daily series, the linear time trend of the monthly series
 is not statistically significant.
@@ -876,29 +956,29 @@ summary(monthreg2)
     ## 
     ## Residuals:
     ##     Min      1Q  Median      3Q     Max 
-    ## -587.82 -146.16  -16.75  140.65  591.31 
+    ## -620.59 -131.12  -13.17  134.61  599.37 
     ## 
     ## Coefficients:
-    ##                     Estimate Std. Error t value Pr(>|t|)  
-    ## (Intercept)        -27.71583   92.18390  -0.301   0.7643  
-    ## count               -0.32819    0.70369  -0.466   0.6419  
-    ## as.factor(month)1  283.00640  116.39913   2.431   0.0168 *
-    ## as.factor(month)2   88.33007  113.48468   0.778   0.4382  
-    ## as.factor(month)3  128.28620  113.46941   1.131   0.2609  
-    ## as.factor(month)4   -0.04867  113.45850   0.000   0.9997  
-    ## as.factor(month)5  209.18004  113.45195   1.844   0.0681 .
-    ## as.factor(month)6   31.28959  113.44977   0.276   0.7833  
-    ## as.factor(month)7  140.78369  113.45195   1.241   0.2175  
-    ## as.factor(month)8   91.62525  116.43104   0.787   0.4332  
-    ## as.factor(month)9   55.11518  116.41615   0.473   0.6369  
-    ## as.factor(month)10 151.23138  116.40552   1.299   0.1968  
-    ## as.factor(month)11  38.09550  116.39913   0.327   0.7441  
+    ##                    Estimate Std. Error t value Pr(>|t|)  
+    ## (Intercept)        -12.2834    84.9266  -0.145   0.8853  
+    ## count               -0.3312     0.5881  -0.563   0.5744  
+    ## as.factor(month)1  258.5683   107.2536   2.411   0.0175 *
+    ## as.factor(month)2  105.8127   104.8125   1.010   0.3149  
+    ## as.factor(month)3  104.0681   104.8009   0.993   0.3228  
+    ## as.factor(month)4    0.9103   104.7927   0.009   0.9931  
+    ## as.factor(month)5  160.0143   104.7877   1.527   0.1295  
+    ## as.factor(month)6   17.0738   104.7861   0.163   0.8709  
+    ## as.factor(month)7  121.2236   104.7877   1.157   0.2498  
+    ## as.factor(month)8   86.6122   107.2777   0.807   0.4212  
+    ## as.factor(month)9   32.0590   107.2665   0.299   0.7656  
+    ## as.factor(month)10 131.1373   107.2584   1.223   0.2240  
+    ## as.factor(month)11  14.7130   107.2536   0.137   0.8911  
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## Residual standard error: 246.9 on 101 degrees of freedom
-    ## Multiple R-squared:  0.1113, Adjusted R-squared:  0.00573 
-    ## F-statistic: 1.054 on 12 and 101 DF,  p-value: 0.4066
+    ## Residual standard error: 239.8 on 113 degrees of freedom
+    ## Multiple R-squared:  0.09748,    Adjusted R-squared:  0.001642 
+    ## F-statistic: 1.017 on 12 and 113 DF,  p-value: 0.4382
 
 Now let’s plot out the full time series decomposition of the monthly
 series. Since this is one of the more meaningful decompositions we’ll
@@ -915,7 +995,7 @@ plot(BTCtsdecomp)
 
 ``` r
 # Create output pdf file for the plot, plot it, and save file.
-pdf("BTCtsdecomp_month_year.pdf", width=6)
+pdf(paste0(figdir,"BTCtsdecomp_month_year.pdf"), width=6)
 plot(BTCtsdecomp)
 dev.off()
 ```
@@ -1050,69 +1130,69 @@ summary(monthhalfreg)
     ## 
     ## Residuals:
     ##     Min      1Q  Median      3Q     Max 
-    ## -577.90  -90.26    1.85   82.42  577.90 
+    ## -567.96 -103.27   -1.37   88.11  567.96 
     ## 
     ## Coefficients:
-    ##                          Estimate Std. Error t value Pr(>|t|)  
-    ## (Intercept)               6.19174  178.61087   0.035   0.9725  
-    ## count                    -0.03838    0.70637  -0.054   0.9568  
-    ## as.factor(monthhalf)1  -211.85287  221.63625  -0.956   0.3427  
-    ## as.factor(monthhalf)2  -113.76684  221.58559  -0.513   0.6094  
-    ## as.factor(monthhalf)3   -56.54278  221.53717  -0.255   0.7994  
-    ## as.factor(monthhalf)4   101.95160  221.49100   0.460   0.6468  
-    ## as.factor(monthhalf)5    87.83180  221.44706   0.397   0.6929  
-    ## as.factor(monthhalf)6    99.34530  221.40538   0.449   0.6551  
-    ## as.factor(monthhalf)7   145.29364  221.36593   0.656   0.5139  
-    ## as.factor(monthhalf)8   187.51902  221.32874   0.847   0.4000  
-    ## as.factor(monthhalf)9   -17.19247  221.29379  -0.078   0.9383  
-    ## as.factor(monthhalf)10 -155.50144  221.26110  -0.703   0.4847  
-    ## as.factor(monthhalf)11  -37.72033  221.23065  -0.171   0.8651  
-    ## as.factor(monthhalf)12  252.36695  221.20246   1.141   0.2581  
-    ## as.factor(monthhalf)13   25.08843  221.17651   0.113   0.9100  
-    ## as.factor(monthhalf)14   74.19546  221.15283   0.335   0.7383  
-    ## as.factor(monthhalf)15   42.14018  221.13139   0.191   0.8495  
-    ## as.factor(monthhalf)16  176.38791  221.11221   0.798   0.4279  
-    ## as.factor(monthhalf)17  -77.78943  221.09529  -0.352   0.7261  
-    ## as.factor(monthhalf)18   83.27218  221.08062   0.377   0.7077  
-    ## as.factor(monthhalf)19  150.63191  243.00214   0.620   0.5375  
-    ## as.factor(monthhalf)20  116.70508  242.94361   0.480   0.6326  
-    ## as.factor(monthhalf)21   79.19424  242.88713   0.326   0.7454  
-    ## as.factor(monthhalf)22  -35.01424  242.83268  -0.144   0.8858  
-    ## as.factor(monthhalf)23  -17.59119  242.78028  -0.072   0.9425  
-    ## as.factor(monthhalf)24  226.42526  242.72992   0.933   0.3544  
-    ## as.factor(monthhalf)25  244.92854  242.68161   1.009   0.3166  
-    ## as.factor(monthhalf)26  383.94008  242.63534   1.582   0.1184  
-    ## as.factor(monthhalf)27   79.46465  242.59113   0.328   0.7443  
-    ## as.factor(monthhalf)28  298.97492  242.54896   1.233   0.2222  
-    ## as.factor(monthhalf)29   98.01177  242.50884   0.404   0.6874  
-    ## as.factor(monthhalf)30  121.38610  242.47077   0.501   0.6183  
-    ## as.factor(monthhalf)31   51.23286  242.43476   0.211   0.8333  
-    ## as.factor(monthhalf)32    6.91017  242.40080   0.029   0.9773  
-    ## as.factor(monthhalf)33  187.86926  242.36889   0.775   0.4411  
-    ## as.factor(monthhalf)34  366.27657  242.33904   1.511   0.1355  
-    ## as.factor(monthhalf)35  -96.90861  242.31124  -0.400   0.6905  
-    ## as.factor(monthhalf)36  437.71975  242.28550   1.807   0.0754 .
-    ## as.factor(monthhalf)37  227.63223  242.26181   0.940   0.3509  
-    ## as.factor(monthhalf)38   66.16270  242.24019   0.273   0.7856  
-    ## as.factor(monthhalf)39 -310.23843  242.22062  -1.281   0.2048  
-    ## as.factor(monthhalf)40   75.83261  242.20311   0.313   0.7552  
-    ## as.factor(monthhalf)41 -211.65984  242.18766  -0.874   0.3854  
-    ## as.factor(monthhalf)42   52.12458  242.17426   0.215   0.8303  
-    ## as.factor(monthhalf)43 -231.80420  242.16293  -0.957   0.3420  
-    ## as.factor(monthhalf)44 -382.49221  242.15366  -1.580   0.1191  
-    ## as.factor(monthhalf)45  212.34552  242.14645   0.877   0.3838  
-    ## as.factor(monthhalf)46 -154.80547  242.14130  -0.639   0.5249  
-    ## as.factor(monthhalf)47  -58.44891  242.13820  -0.241   0.8100  
+    ##                         Estimate Std. Error t value Pr(>|t|)  
+    ## (Intercept)              36.0083   169.9542   0.212   0.8328  
+    ## count                    -0.4525     0.5841  -0.775   0.4409  
+    ## as.factor(monthhalf)1  -221.3776   213.0113  -1.039   0.3019  
+    ## as.factor(monthhalf)2  -122.8775   212.9753  -0.577   0.5657  
+    ## as.factor(monthhalf)3   -65.2393   212.9408  -0.306   0.7601  
+    ## as.factor(monthhalf)4    93.6692   212.9080   0.440   0.6612  
+    ## as.factor(monthhalf)5    79.9635   212.8767   0.376   0.7082  
+    ## as.factor(monthhalf)6    91.8912   212.8471   0.432   0.6671  
+    ## as.factor(monthhalf)7   138.2536   212.8190   0.650   0.5179  
+    ## as.factor(monthhalf)8   180.8931   212.7926   0.850   0.3979  
+    ## as.factor(monthhalf)9   -23.4043   212.7677  -0.110   0.9127  
+    ## as.factor(monthhalf)10 -161.2991   212.7445  -0.758   0.4507  
+    ## as.factor(monthhalf)11  -43.1039   212.7228  -0.203   0.8400  
+    ## as.factor(monthhalf)12  247.3975   212.7028   1.163   0.2484  
+    ## as.factor(monthhalf)13   20.5331   212.6843   0.097   0.9233  
+    ## as.factor(monthhalf)14   70.0543   212.6675   0.329   0.7427  
+    ## as.factor(monthhalf)15   38.4131   212.6523   0.181   0.8571  
+    ## as.factor(monthhalf)16  173.0750   212.6386   0.814   0.4182  
+    ## as.factor(monthhalf)17  -80.6883   212.6266  -0.379   0.7054  
+    ## as.factor(monthhalf)18   76.5888   212.6162   0.360   0.7197  
+    ## as.factor(monthhalf)19  140.5969   212.6073   0.661   0.5104  
+    ## as.factor(monthhalf)20   45.9728   212.6001   0.216   0.8294  
+    ## as.factor(monthhalf)21   63.1854   212.5945   0.297   0.7671  
+    ## as.factor(monthhalf)22  -61.3196   212.5905  -0.288   0.7738  
+    ## as.factor(monthhalf)23   15.8464   212.5881   0.075   0.9408  
+    ## as.factor(monthhalf)24  191.7067   212.5873   0.902   0.3700  
+    ## as.factor(monthhalf)25  290.1639   212.5881   1.365   0.1763  
+    ## as.factor(monthhalf)26  243.5606   212.5905   1.146   0.2555  
+    ## as.factor(monthhalf)27   90.4210   212.5945   0.425   0.6718  
+    ## as.factor(monthhalf)28  123.0201   212.6001   0.579   0.5645  
+    ## as.factor(monthhalf)29   58.2043   212.6073   0.274   0.7850  
+    ## as.factor(monthhalf)30   95.1945   212.6162   0.448   0.6556  
+    ## as.factor(monthhalf)31   44.1928   233.0893   0.190   0.8501  
+    ## as.factor(monthhalf)32    0.2843   233.0651   0.001   0.9990  
+    ## as.factor(monthhalf)33  181.6575   233.0424   0.780   0.4381  
+    ## as.factor(monthhalf)34  360.4789   233.0212   1.547   0.1260  
+    ## as.factor(monthhalf)35 -102.2922   233.0014  -0.439   0.6619  
+    ## as.factor(monthhalf)36  432.7503   232.9831   1.857   0.0671 .
+    ## as.factor(monthhalf)37  223.0769   232.9663   0.958   0.3413  
+    ## as.factor(monthhalf)38   62.0215   232.9509   0.266   0.7908  
+    ## as.factor(monthhalf)39 -313.9655   232.9370  -1.348   0.1817  
+    ## as.factor(monthhalf)40   72.5197   232.9246   0.311   0.7564  
+    ## as.factor(monthhalf)41 -214.5587   232.9136  -0.921   0.3598  
+    ## as.factor(monthhalf)42   49.6399   232.9041   0.213   0.8318  
+    ## as.factor(monthhalf)43 -233.8748   232.8960  -1.004   0.3184  
+    ## as.factor(monthhalf)44 -384.1487   232.8894  -1.649   0.1031  
+    ## as.factor(monthhalf)45  211.1032   232.8843   0.906   0.3675  
+    ## as.factor(monthhalf)46 -155.6337   232.8806  -0.668   0.5059  
+    ## as.factor(monthhalf)47  -58.8630   232.8784  -0.253   0.8011  
     ## ---
     ## Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     ## 
-    ## Residual standard error: 242.1 on 65 degrees of freedom
-    ## Multiple R-squared:   0.45,  Adjusted R-squared:  0.04384 
-    ## F-statistic: 1.108 on 48 and 65 DF,  p-value: 0.347
+    ## Residual standard error: 232.9 on 77 degrees of freedom
+    ## Multiple R-squared:  0.4201, Adjusted R-squared:  0.05863 
+    ## F-statistic: 1.162 on 48 and 77 DF,  p-value: 0.2747
 
 ``` r
 # Create output pdf file for the plot, plot it, and save file.
-pdf("BTCtsdecomp_month_half.pdf", width=6)
+pdf(paste0(figdir,"BTCtsdecomp_month_half.pdf"), width=6)
 plot(BTCmonthhalftsdecomp)
 dev.off()
 ```
@@ -1132,13 +1212,11 @@ shiny dashboard that allows you to interact with the model. This
 dashboard is a local version of
 [seasonal.website](http://www.seasonal.website/). See the [Introduction
 to Seasonal](http://www.seasonal.website/seasonal.html) page for more
-info. *As of April 2024, this view function is producing an error.*
+info.
 
 ``` r
 BTCts_Close |> seas() ##|> view()
 ```
-
-    ## Model used in SEATS is different: (0 1 1)
 
     ## 
     ## Call:
@@ -1146,7 +1224,7 @@ BTCts_Close |> seas() ##|> view()
     ## 
     ## Coefficients:
     ## AR-Nonseasonal-01  
-    ##             0.176
+    ##             0.164
 
 The above output shows us some of the results from the time series model
 that was estimated (X-13 ARIMA-SEATS). This is identified even for the
@@ -1169,4 +1247,4 @@ BTCts_AnnRet |> seas() ## |> view()
     ## 
     ## Coefficients:
     ##          Constant  AR-Nonseasonal-01  
-    ##            54.512              0.135
+    ##           52.7179             0.1244

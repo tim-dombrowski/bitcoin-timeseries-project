@@ -47,7 +47,7 @@ If you update the packages and get everything working successfully, then you can
 
 If you run into any trouble using renv in the code chunk above, then you can use the code chunk below to install the required packages for this analysis. This method will first check if you have already installed the packages. If any are missing, it will then install them. Then it will load the packages into the R session. A potential flaw in this approach compared to using renv is that it will simply install the latest versions of the packages, which could potentially break some of the code in this notebook if any of the updates aren't backwards compatible. 
 
-As long as you have downloaded the entire project repository, the renv chunk above will likely be managing the packages. Thus, the `eval=FALSE` option is used to prevent this chunk from running unless manually executed. So if you only downloaded this one Rmd file, this code chunk should take care of installing the packages for you.
+As long as you have downloaded the entire project repository, the renv chunk above will likely be managing the packages. Thus, the `eval=FALSE` option is used to prevent this chunk from running unless manually executed. But if you only downloaded this one Rmd file, this code chunk should take care of installing the packages for you.
 
 ```{r setup2, results='hide', message=FALSE, eval=FALSE}
 # Create list of packages needed for this exercise, omit geckor since its not on CRAN
@@ -66,19 +66,41 @@ library(seasonalview)
 library(rmarkdown)
 ```
 
+### Set Directories and Paths
+
+Set up paths to save data files and other relevant directories:
+
+```{r datapaths}
+# Create general data directory in project root
+datadir = "../Data/"
+if(!dir.exists(datadir)) dir.create(datadir)
+# Create raw data directory within data directory
+rawdir = paste0(datadir,"Raw/")
+if(!dir.exists(rawdir)) dir.create(rawdir)
+# Create a figures directory in project root
+figdir = "../Figures/"
+if(!dir.exists(figdir)) dir.create(figdir)
+```
+
 
 ## Bitcoin Data Import and Cleaning
 
 The `getSymbols()` function from the quantmod package let's us import the daily price data for bitcoin. The `src="yahoo"` argument specifies that we want to pull the data from Yahoo Finance. The `from` and `to` arguments specify the date range for the data, which goes back to October 2014 for bitcoin. Rather that assigning a variable name to the output of `getSymbols()`, the function creates a new variable for each ticker in the list, named after the ticker. For bitcoin in particular, the `"BTC-USD"` can be tedious to work with since the presence of a dash requires one to wrap the variable name in backticks. This is resolved in the last line of the code chunk below by creating a new variable `BTC` to be used instead.
 
 ```{r assetdata, results='hide', warning=FALSE}
+# Set parameters and download data
 startdate = "2014-10-01"
 tickers = c("BTC-USD")
 getSymbols(tickers,
            src="yahoo",
            from=startdate,
            to=Sys.Date())
+# Create a copy with a simpler name
 BTC = `BTC-USD`
+# Save the data to a csv file
+write.csv(BTC, file=paste0(rawdir,"BTC_daily_all.csv"), row.names=FALSE)
+# Delete old variable to minimize memory usage
+rm(`BTC-USD`)
 ```
 
 If the code chunk above generates an error about missing values, this can occur due to the most recent observation having a missing value. To resolve this, we can just filter the data with `complete.cases()`, which removes any rows with any missing values.
@@ -96,8 +118,10 @@ names(BTCdaily) = "Close"
 # Convert to weekly and monthly series
 BTCweeksOHLC = to.weekly(BTCdaily$Close, name=NULL)
 BTCweeks = BTCweeksOHLC$Close
+write.csv(BTCweeks, file=paste0(rawdir,"BTC_weekly_all.csv"), row.names=FALSE)
 BTCmonthOHLC = to.monthly(BTCdaily$Close, name=NULL)
 BTCmonth = BTCmonthOHLC$Close
+write.csv(BTCmonth, file=paste0(rawdir,"BTC_monthly_all.csv"), row.names=FALSE)
 ```
 
 
@@ -105,35 +129,44 @@ BTCmonth = BTCmonthOHLC$Close
 
 ### Basic Price Charts
 
-We'll start with some simple plots of the BTC price series that we downloaded. Starting with the daily chart, then weekly and monthly. The [ggplot2 package](https://ggplot2.tidyverse.org/) (part of tidyverse) is used to generate the plots. The first element of the plot will be a line chart (`geom_line()`) of the price series. Note that the `index()` function is used to extract the date index from the xts object for the plot. Then we'll clear out the x-axis label with `xlab("")` since the dates are self-explanatory. The y-axis labels are formatted as dollar amounts using the `dollar_format()` function from the scales package, and the `ggtitle()` function is used to add a title to each plot.
+We'll start with some simple plots of the BTC price series that we downloaded. Starting with the daily chart, then weekly and monthly. The [ggplot2 package](https://ggplot2.tidyverse.org/) (part of tidyverse) is used to generate the plots. The first element of the plot will be a line chart (`geom_line()`) of the price series. Note that the `index()` function is used to extract the date index from the xts object for the plot. Then we'll clear out the x-axis label with `xlab("")` since the dates are self-explanatory. The y-axis labels are formatted as dollar amounts using the `dollar_format()` function from the scales package, and the `ggtitle()` function is used to add a title to each plot. After each plot is created, it is displayed in the notebook and then saved using `ggsave()`. *Note: For the monthly plot, the y input needed to be formatted back to a Date since the scale package does not appear to be compatible with the yearmon format.*
 
 ```{r btcplotraw, warning=FALSE}
-ggplot() +
+BTCdaily_plot_price = ggplot() +
   geom_line(aes(x=index(BTCdaily),y=BTCdaily)) +
   xlab("") +
-  scale_y_continuous(labels=dollar_format()) +
+  scale_x_date(date_labels="%Y", date_breaks="2 year") +
+  scale_y_continuous(labels=dollar_format(), n.breaks=6) +
   ggtitle("Daily Bitcoin Price Series (Oct. 2014 - present)")
+BTCdaily_plot_price
+ggsave(paste0(figdir,"BTCdaily_plot_price.pdf"), BTCdaily_plot_price, width=8, height=4)
 
-ggplot() +
+BTCweeks_plot_price = ggplot() +
   geom_line(aes(x=index(BTCweeks),y=BTCweeks)) +
   xlab("") +
-  scale_y_continuous(labels=dollar_format()) +
+  scale_x_date(date_labels="%Y", date_breaks="2 year") +
+  scale_y_continuous(labels=dollar_format(), n.breaks=6) +
   ggtitle("Weekly Bitcoin Price Series (Oct. 2014 - present)")
+BTCweeks_plot_price
+ggsave(paste0(figdir,"BTCweeks_plot_price.pdf"), BTCweeks_plot_price, width=8, height=4)
 
-ggplot() +
-  geom_line(aes(x=index(BTCmonth),y=BTCmonth)) +
+BTCmonth_plot_price = ggplot() +
+  geom_line(aes(x=as.Date(index(BTCmonth)),y=BTCmonth)) +
   xlab("") +
-  ggtitle("Monthly Bitcoin Price Series (Oct. 2014 - present)") +
-  scale_y_continuous(labels=dollar_format())
+  scale_x_date(date_labels="%Y", date_breaks="2 year") +
+  scale_y_continuous(labels=dollar_format(), n.breaks=6) +
+  ggtitle("Monthly Bitcoin Price Series (Oct. 2014 - present)")
+BTCmonth_plot_price
+ggsave(paste0(figdir,"BTCmonth_plot_price.pdf"), BTCmonth_plot_price, width=8, height=4)
 ```
 
 ### Log Price Charts
 
-In regard to statistical analysis of time series data, one drawback of the price series above is that they are non-stationary. This will be explored in more detail below, but it is visually depicted in the plots above through the observation that the mean value of the series is not constant over time. To resolve this, we can convert the price series to a stationary process by taking its derivative or differencing observations over time to measure price changes (or returns). By using log returns, we effectively assume continuous compounding of the price series, which reflects the 24/7 365 nature of cryptocurrency markets.
+In regard to statistical analysis of time series data, one drawback of the directly analyzing the price series above is that they are *non-stationary*. This property will be explored in more detail below, but it is visually depicted in the plots above through the observation that the mean value (and variance) of the series is not constant over time. To resolve this, we can convert the price series to a stationary process by taking its derivative (or by differencing the observations over time to measure price changes/returns). By using log returns, we effectively assume continuous compounding of the price series, which reflects the perpetual nature of cryptocurrency markets.
 
 $$r_t = \ln(P_t) - \ln(P_{t-1}) = \ln\left(\dfrac{P_t}{P_{t-1}}\right)$$
 
-The first step in calculating continuously compounded growth rates is to take the natural logarithm of the prices. To visualize this transformation, let's apply two approaches for plotting out the log price charts. The first approach is to simply compute the log(prices) within the ggplot specifications. However, note that the scaling on the y-axis is hard to interpret. The second approach will keep the original dollar format with logarithmic scaling.
+The first step in calculating continuously compounded growth rates is to take the natural logarithm of the prices. To visualize this transformation, let's apply two approaches for plotting out the log price charts. The first approach is to simply compute the log(prices) within the ggplot specifications. However, note that the scaling on the y-axis is hard to interpret. The second approach will keep the original dollar format with logarithmic scaling. Since the second version will be more intuitive, we won't bother saving these to files.
 
 ```{r btcplotlog}
 ggplot() +
@@ -152,26 +185,35 @@ ggplot() +
   ggtitle("Monthly Bitcoin Log Price Series (Oct. 2014 - present)")
 ```
 
-Alternatively, we can generate the same charts by instead plotting the non-logged price series with a logarithmic y-axis. This is done in `ggplot` with the `scale_y_continuous(transform='log10')` setting. Then the `largest_with_cents=1` argument is added to the `dollar_format()` function to remove decimals/cents from the y-axis labels.
+Alternatively, we can generate the same charts by instead plotting the non-logged price series with a logarithmic y-axis. This is done in `ggplot` with the `scale_y_continuous(transform='log10')` setting. Then the `largest_with_cents=1` argument is added to the `dollar_format()` function to remove decimals/cents from the y-axis labels. 
 
 ```{r btcplotlog_alt}
-ggplot() +
+BTCdaily_plot_logprice = ggplot() +
   geom_line(aes(x=index(BTCdaily), y=BTCdaily)) +
+  scale_x_date(date_labels="%Y", date_breaks="2 year") +
   scale_y_continuous(transform='log10', labels=dollar_format(largest_with_cents=1)) +
   xlab("") +
   ggtitle("Daily Bitcoin Price Series with Logarithmic Y-axis Scaling")
+BTCdaily_plot_logprice
+ggsave(paste0(figdir,"BTCdaily_plot_logprice.pdf"), BTCdaily_plot_logprice, width=8, height=4)
 
-ggplot() +
+BTCweeks_plot_logprice = ggplot() +
   geom_line(aes(x=index(BTCweeks), y=BTCweeks)) +
+  scale_x_date(date_labels="%Y", date_breaks="2 year") +
   scale_y_continuous(transform='log10', labels=dollar_format(largest_with_cents=1)) +
   xlab("") +
   ggtitle("Weekly Bitcoin Price Series with Logarithmic Y-axis Scaling")
+BTCweeks_plot_logprice
+ggsave(paste0(figdir,"BTCweeks_plot_logprice.pdf"), BTCweeks_plot_logprice, width=8, height=4)
 
-ggplot() +
-  geom_line(aes(x=index(BTCmonth), y=BTCmonth)) +
+BTCmonth_plot_logprice = ggplot() +
+  geom_line(aes(x=as.Date(index(BTCmonth)), y=BTCmonth)) +
+  scale_x_date(date_labels="%Y", date_breaks="2 year") +
   scale_y_continuous(transform='log10', labels=dollar_format(largest_with_cents=1)) +
   xlab("") +
   ggtitle("Monthly Bitcoin Price Series with Logarithmic Y-axis Scaling")
+BTCmonth_plot_logprice
+ggsave(paste0(figdir,"BTCmonth_plot_logprice.pdf"), BTCmonth_plot_logprice, width=8, height=4)
 ```
 
 ### Log Return Charts
@@ -200,26 +242,35 @@ rBTCmonth = rBTCmonth[-1,]
 With these return series, we resolve much of the non-stationarity present in the price series. With a more stationary process like returns, a better way to plot the data is with a bar chart. The average bar height (red dashed line) represents the average annual return. The `percent_format()` function from the scales package is used to convert the y-axis labels to percentages, and the `scale=1` parameter prevents it from treating the percentage unit variables as decimals.
 
 ```{r btcplotret}
-ggplot(rBTCdaily,aes(x=Date,y=AnnRet))+
+BTCdaily_plot_logret = ggplot(rBTCdaily,aes(x=Date,y=AnnRet))+
   geom_col()+
   geom_hline(yintercept=mean(rBTCdaily$AnnRet), linetype='dashed', col='red')+
   xlab("") +
-  scale_y_continuous(labels=percent_format(scale=1)) +
+  scale_x_date(date_labels="%Y", date_breaks="2 year") +
+  scale_y_continuous(labels=percent_format(scale=1), n.breaks=6) +
   ggtitle("BTC Annualized Daily Returns")
+BTCdaily_plot_logret
+ggsave(paste0(figdir,"BTCdaily_plot_logret.pdf"), BTCdaily_plot_logret, width=8, height=4)
 
-ggplot(rBTCweeks,aes(x=Date,y=AnnRet))+
+BTCweeks_plot_logret = ggplot(rBTCweeks,aes(x=Date,y=AnnRet))+
   geom_col()+
   geom_hline(yintercept=mean(rBTCdaily$AnnRet), linetype='dashed', col='red')+
   xlab("") +
-  scale_y_continuous(labels=percent_format(scale=1)) +
+  scale_x_date(date_labels="%Y", date_breaks="2 year") +
+  scale_y_continuous(labels=percent_format(scale=1), n.breaks=6) +
   ggtitle("BTC Annualized Weekly Returns")
+BTCweeks_plot_logret
+ggsave(paste0(figdir,"BTCweeks_plot_logret.pdf"), BTCweeks_plot_logret, width=8, height=4)
 
-ggplot(rBTCmonth,aes(x=Date,y=AnnRet))+
+BTCmonth_plot_logret = ggplot(rBTCmonth,aes(x=as.Date(Date),y=AnnRet)) +
   geom_col()+
   geom_hline(yintercept=mean(rBTCmonth$AnnRet), linetype='dashed', col='red')+
   xlab("") +
-  scale_y_continuous(labels=percent_format(scale=1)) +
+  scale_x_date(date_labels="%Y", date_breaks="2 year") +
+  scale_y_continuous(labels=percent_format(scale=1), n.breaks=6) +
   ggtitle("BTC Annualized Monthly Returns")
+BTCmonth_plot_logret
+ggsave(paste0(figdir,"BTCmonth_plot_logret.pdf"), BTCmonth_plot_logret, width=8, height=4)
 ```
 
 ### Summary Statistics
@@ -242,7 +293,6 @@ meanRetVols = data.frame(BTCdaily=sd(rBTCdaily$AnnRet),
 meanRetVols |> round(digits=2)
 ```
 
-
 One way to visualize the empirical distribution summarized by the mean and standard deviation is to plot a frequency histogram of the return series overlayed with a normal bell curve transformed by the empirical mean and standard deviation. The below code chunk first selects a reasonable bin width (`bw`) for each frequency (trial and error), then saves a count of non-missing observations, and generates the plot described above.
 
 ```{r btcplotbell}
@@ -259,6 +309,7 @@ ggplot(rBTCdaily,aes(AnnRet)) +
   scale_x_continuous(labels=percent_format(scale=1)) +
   ylab("Frequency")
 
+# Same process for weekly series
 bw = 100
 n_weeks = nrow(rBTCweeks)
 ggplot(rBTCweeks,aes(AnnRet)) +
@@ -270,6 +321,7 @@ ggplot(rBTCweeks,aes(AnnRet)) +
   scale_x_continuous(labels=percent_format(scale=1)) +
   ylab("Frequency")
 
+# Same process for monthly series
 bw = 50
 n_month = nrow(rBTCmonth)
 ggplot(rBTCmonth,aes(AnnRet)) +
@@ -341,7 +393,7 @@ Another area of concern when it comes to stationarity of a time series is season
 
 Another important piece to note in the second line below is that the `+6` is used to shift which day of the week is set to the reference category in the regression model. The 6-day shift was selected by first running the regression without the shift and examining the estimates for the day dummies. Since `as.factor(day)1` (Friday) produced the most negative estimate, the increment of 6 to the count variable by shift that up to 7, and $7 \mod 7 = 0$.
 
-Thus, after increasing the count, the most negative day will be the baseline, and all the day dummies should produce a positive coefficient. This shift will maximize the likelihood that we find a significant result from the regression by comparing each other day to one of the extremes.
+Thus, after increasing the count, the most negative day will be the baseline, and all the day dummies should produce a positive coefficient. This shift will maximize the likelihood that we find a significant result from the regression by comparing each other day to one of the extremes. As of April 25, 2025, there is a marginally significant finding that day=4 (Mondays) tend to out-perform relative to day=0 (Thursdays). *Perhaps one could explore how a strategy around this observation would perform? Buy at end of Thursday and sell at end of Monday?*
 
 ```{r weekseason}
 rBTCdaily$count = 1:length(rBTCdaily$AnnRet)
@@ -379,7 +431,7 @@ plot(BTCdayyeartsdecomp)
 
 ### Month-of-Year Seasonality
 
-The next level to test for seasonality at is for each month of the year. Similar to above, we create a count in the monthly data frame, calculate $count \mod 12$ with a 1-month shift (to adjust the baseline to the worst month), and then regress the returns on a factor variable of the remainders.
+The next level to test for seasonality at is for each month of the year. Similar to above, we create a count in the monthly data frame, calculate $count \mod 12$ with a 1-month shift (to adjust the baseline to the worst month), and then regress the returns on a factor variable of the remainders. As of April 25, 2025, there is a marginally significant finding that month=1 (October) tends to out-perform relative to month=0 (September). *How would a "Buy Sept 1, Sell Oct 31" strategy perform?*
 
 ```{r monthseason}
 rBTCmonth$count = 1:length(rBTCmonth$AnnRet)
@@ -402,7 +454,7 @@ BTCts_Close = ts(as.numeric(BTCmonth), frequency=12, start=c(2014,10))
 BTCtsdecomp = decompose(BTCts_Close)
 plot(BTCtsdecomp)
 # Create output pdf file for the plot, plot it, and save file.
-pdf("BTCtsdecomp_month_year.pdf", width=6)
+pdf(paste0(figdir,"BTCtsdecomp_month_year.pdf"), width=6)
 plot(BTCtsdecomp)
 dev.off()
 ```
@@ -477,7 +529,7 @@ rBTCmonth$monthhalf = rBTCmonth$count %% 48
 monthhalfreg = lm(AnnRet~count+as.factor(monthhalf),data=rBTCmonth)
 summary(monthhalfreg)
 # Create output pdf file for the plot, plot it, and save file.
-pdf("BTCtsdecomp_month_half.pdf", width=6)
+pdf(paste0(figdir,"BTCtsdecomp_month_half.pdf"), width=6)
 plot(BTCmonthhalftsdecomp)
 dev.off()
 ```
@@ -485,7 +537,7 @@ dev.off()
 
 ### A Deeper Dive on Seasonality
 
-So far, we have just used some fairly basic seasonality tools from the tseries package. A more in-depth package focused around seasonal adjustments for time series data is the seasonal package. The `seas()` function will output the main results from the X-13 ARIMA-SEATS seasonal adjustment method. If you wish to explore this model in more detail, uncomment the `view()` function in the code chunk below to generate a shiny dashboard that allows you to interact with the model. This dashboard is a local version of [seasonal.website](http://www.seasonal.website/). See the [Introduction to Seasonal](http://www.seasonal.website/seasonal.html) page for more info. *As of April 2024, this view function is producing an error.*
+So far, we have just used some fairly basic seasonality tools from the tseries package. A more in-depth package focused around seasonal adjustments for time series data is the seasonal package. The `seas()` function will output the main results from the X-13 ARIMA-SEATS seasonal adjustment method. If you wish to explore this model in more detail, uncomment the `view()` function in the code chunk below to generate a shiny dashboard that allows you to interact with the model. This dashboard is a local version of [seasonal.website](http://www.seasonal.website/). See the [Introduction to Seasonal](http://www.seasonal.website/seasonal.html) page for more info.
 
 ```{r seasonal1}
 BTCts_Close |> seas() ##|> view()
